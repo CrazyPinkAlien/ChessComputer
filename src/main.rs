@@ -1,21 +1,19 @@
 use bevy::app::App;
-use bevy::DefaultPlugins;
+use bevy::prelude::{ImagePlugin, PluginGroup};
 use bevy::winit::WinitSettings;
+use bevy::DefaultPlugins;
 
-use crate::ui::UIPlugin;
 use crate::core::CorePlugin;
+use crate::ui::UIPlugin;
 
 pub mod core;
 pub mod ui;
 
-// Main entry point
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(UIPlugin)
         .add_plugin(CorePlugin)
-
         .insert_resource(WinitSettings::desktop_app())
-
         .run();
 }
