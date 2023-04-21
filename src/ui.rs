@@ -1,7 +1,7 @@
 use bevy::app::{App, Plugin};
 use bevy::prelude::{Camera2dBundle, Commands};
 
-pub struct UIPlugin;
+pub(super) struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {

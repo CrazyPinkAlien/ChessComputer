@@ -2,10 +2,9 @@ use std::fs::read_to_string;
 
 use bevy::prelude::{
     default, AssetServer, Assets, Bundle, Commands, FromWorld, Handle, Res, ResMut, Resource,
-    Transform, Vec2, Vec3,
+    Transform, Vec2, Vec3, Component
 };
 use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
-
 use super::board::{BoardPosition, BoardProperties};
 
 enum PieceColor {
@@ -29,12 +28,16 @@ pub struct PieceProperties {
 
 impl FromWorld for PieceProperties {
     fn from_world(_world: &mut bevy::prelude::World) -> Self {
-        PieceProperties { scale: 0.2 }
+        PieceProperties { scale: 0.25 }
     }
 }
 
+#[derive(Component)]
+struct Piece;
+
 #[derive(Bundle)]
-pub struct PieceBundle {
+pub(super) struct PieceBundle {
+    _p: Piece,
     position: BoardPosition,
 
     #[bundle]
@@ -61,13 +64,14 @@ impl PieceBundle {
             ..default()
         };
         PieceBundle {
+            _p: Piece,
             sprite: sprite,
             position: BoardPosition::new(rank, file),
         }
     }
 }
 
-pub fn setup(
+pub(super) fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,

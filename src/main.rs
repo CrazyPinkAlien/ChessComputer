@@ -6,8 +6,8 @@ use bevy::DefaultPlugins;
 use crate::core::CorePlugin;
 use crate::ui::UIPlugin;
 
-pub mod core;
-pub mod ui;
+mod core;
+mod ui;
 
 fn main() {
     App::new()

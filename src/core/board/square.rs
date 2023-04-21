@@ -1,14 +1,19 @@
-use bevy::prelude::{default, Bundle, Color, Transform, Vec2};
+use bevy::prelude::{default, Bundle, Color, Transform, Vec2, Component};
 use bevy::sprite::{Sprite, SpriteBundle};
 
+#[derive(Component)]
+struct Square;
+
 #[derive(Bundle)]
-pub struct SquareBundle {
+pub(super) struct SquareBundle {
+    _p: Square,
+    
     #[bundle]
     sprite: SpriteBundle,
 }
 
 impl SquareBundle {
-    pub fn new(x: f32, y: f32, size: f32, color: Color) -> Self {
+    pub(super) fn new(x: f32, y: f32, size: f32, color: Color) -> Self {
         let sprite_bundle = SpriteBundle {
             sprite: Sprite {
                 color: color,
@@ -19,6 +24,7 @@ impl SquareBundle {
             ..default()
         };
         SquareBundle {
+            _p: Square,
             sprite: sprite_bundle,
         }
     }
