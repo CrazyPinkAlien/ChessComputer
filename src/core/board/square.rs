@@ -1,4 +1,4 @@
-use bevy::prelude::{default, Bundle, Color, Transform, Vec2, Component};
+use bevy::prelude::{default, Bundle, Color, Component, Transform, Vec2};
 use bevy::sprite::{Sprite, SpriteBundle};
 
 #[derive(Component)]
@@ -7,7 +7,7 @@ struct Square;
 #[derive(Bundle)]
 pub(super) struct SquareBundle {
     _p: Square,
-    
+
     #[bundle]
     sprite: SpriteBundle,
 }

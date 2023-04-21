@@ -1,11 +1,18 @@
 use std::fs::read_to_string;
 
+use bevy::input::ButtonState;
 use bevy::prelude::{
-    default, AssetServer, Assets, Bundle, Commands, FromWorld, Handle, Res, ResMut, Resource,
-    Transform, Vec2, Vec3, Component
+    default, AssetServer, Assets, Bundle, Camera, Changed, Commands, Component, EventReader,
+    FromWorld, GlobalTransform, Handle, MouseButton, Query, Res, ResMut, Resource, Transform, Vec2,
+    Vec3, With,
 };
 use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
-use super::board::{BoardPosition, BoardProperties};
+use bevy::window::Windows;
+
+use crate::ui::MainCamera;
+
+use super::board::{BoardClickEvent, BoardPosition, BoardProperties};
+use super::Selected;
 
 enum PieceColor {
     White,
@@ -33,12 +40,13 @@ impl FromWorld for PieceProperties {
 }
 
 #[derive(Component)]
-struct Piece;
+pub(crate) struct Piece;
 
 #[derive(Bundle)]
 pub(super) struct PieceBundle {
     _p: Piece,
     position: BoardPosition,
+    selected: Selected,
 
     #[bundle]
     sprite: SpriteSheetBundle,
@@ -65,6 +73,7 @@ impl PieceBundle {
         };
         PieceBundle {
             _p: Piece,
+            selected: Selected(false),
             sprite: sprite,
             position: BoardPosition::new(rank, file),
         }
@@ -138,4 +147,58 @@ pub(super) fn setup(
         }
     }
     commands.spawn_batch(pieces);
+}
+
+pub(super) fn handle_piece_clicks(
+    mut board_click_events: EventReader<BoardClickEvent>,
+    mut query: Query<(&BoardPosition, &mut Selected), With<Piece>>,
+) {
+    for click in board_click_events.iter() {
+        for (piece_position, mut selected) in query.iter_mut() {
+            // Check if this piece was clicked on and the button was just pressed
+            if (click.position == *piece_position) && (click.input.state == ButtonState::Pressed) {
+                match click.input.button {
+                    MouseButton::Left => {
+                        // If the left button was clicked, select it
+                        selected.0 = true;
+                    }
+                    MouseButton::Right => {
+                        // If the right button was clicked, deselect it
+                        selected.0 = false;
+                    }
+                    _ => {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub(super) fn selected_piece(
+    mut query: Query<(&Selected, &mut Transform), (With<Piece>, Changed<Selected>)>,
+    windows: Res<Windows>,
+    camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
+) {
+    // Get window and camera
+    let window = windows.get_primary().unwrap();
+    let (camera, camera_transform) = camera.single();
+    // Check if the cursor is in the window
+    if let Some(world_position) = window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
+    {
+        for (selected, mut transform) in query.iter_mut() {
+            // Check if this piece is selected
+            if selected.0 == true {
+                // Move this piece to follow the mouse
+                *transform = transform.with_translation(Vec3::new(
+                    world_position[0],
+                    world_position[1],
+                    transform.translation.x,
+                ));
+            }
+        }
+    }
 }
