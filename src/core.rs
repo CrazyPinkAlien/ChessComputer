@@ -23,7 +23,7 @@ impl Plugin for CorePlugin {
             .add_event::<board::BoardClickEvent>()
             .add_system(mouse_event_handler)
             .add_system(piece::handle_piece_clicks)
-            .add_system(piece::selected_piece);
+            .add_system(piece::dragged_piece);
     }
 }
 

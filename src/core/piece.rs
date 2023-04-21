@@ -2,9 +2,9 @@ use std::fs::read_to_string;
 
 use bevy::input::ButtonState;
 use bevy::prelude::{
-    default, AssetServer, Assets, Bundle, Camera, Commands, Component, EventReader,
-    FromWorld, GlobalTransform, Handle, MouseButton, Query, Res, ResMut, Resource, Transform, Vec2,
-    Vec3, With,
+    default, AssetServer, Assets, Bundle, Camera, Commands, Component, EventReader, FromWorld,
+    GlobalTransform, Handle, MouseButton, Query, Res, ResMut, Resource, Transform, Vec2, Vec3,
+    With,
 };
 use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
 use bevy::window::Windows;
@@ -42,11 +42,15 @@ impl FromWorld for PieceProperties {
 #[derive(Component)]
 pub(crate) struct Piece;
 
+#[derive(Component)]
+pub(crate) struct Dragging(bool);
+
 #[derive(Bundle)]
 pub(super) struct PieceBundle {
     _p: Piece,
     position: BoardPosition,
     selected: Selected,
+    dragging: Dragging,
 
     #[bundle]
     sprite: SpriteSheetBundle,
@@ -74,6 +78,7 @@ impl PieceBundle {
         PieceBundle {
             _p: Piece,
             selected: Selected(false),
+            dragging: Dragging(false),
             sprite: sprite,
             position: BoardPosition::new(rank, file),
         }
@@ -151,34 +156,43 @@ pub(super) fn setup(
 
 pub(super) fn handle_piece_clicks(
     mut board_click_events: EventReader<BoardClickEvent>,
-    mut query: Query<(&BoardPosition, &mut Selected), With<Piece>>,
+    mut query: Query<(&BoardPosition, &mut Selected, &mut Dragging), With<Piece>>,
 ) {
     for click in board_click_events.iter() {
-        for (piece_position, mut selected) in query.iter_mut() {
-            // Check if this piece was clicked on and the button was just pressed
-            if click.input.state == ButtonState::Pressed {
-                match click.input.button {
-                    MouseButton::Left => {
-                        // If the left button was clicked, select it
+        for (piece_position, mut selected, mut dragging) in query.iter_mut() {
+            match click.input.button {
+                MouseButton::Left => {
+                    // If the left button was clicked, select it and start dragging it
+                    if click.input.state == ButtonState::Pressed {
                         if click.position == *piece_position {
                             selected.0 = true;
+                            dragging.0 = true;
+                        } else {
+                            if selected.0 {
+                                selected.0 = false;
+                            }
                         }
+                    } else if click.input.state == ButtonState::Released {
+                        dragging.0 = false;
                     }
-                    MouseButton::Right => {
-                        // If the right button was clicked, deselect it
+                }
+                MouseButton::Right => {
+                    // If the right button was clicked, deselect it
+                    if click.input.state == ButtonState::Pressed {
                         selected.0 = false;
+                        dragging.0 = false;
                     }
-                    _ => {
-                        break;
-                    }
+                }
+                _ => {
+                    break;
                 }
             }
         }
     }
 }
 
-pub(super) fn selected_piece(
-    mut query: Query<(&Selected, &mut Transform), With<Piece>>,
+pub(super) fn dragged_piece(
+    mut query: Query<(&Dragging, &mut Transform), With<Piece>>,
     windows: Res<Windows>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
 ) {
@@ -191,9 +205,9 @@ pub(super) fn selected_piece(
         .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
         .map(|ray| ray.origin.truncate())
     {
-        for (selected, mut transform) in query.iter_mut() {
+        for (dragging, mut transform) in query.iter_mut() {
             // Check if this piece is selected
-            if selected.0 == true {
+            if dragging.0 == true {
                 // Move this piece to follow the mouse
                 *transform = transform.with_translation(Vec3::new(
                     world_position[0],
