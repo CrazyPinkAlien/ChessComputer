@@ -1,6 +1,6 @@
 use bevy::ecs::system::Commands;
 use bevy::input::mouse::MouseButtonInput;
-use bevy::prelude::{info, Color, Component, FromWorld, Res, Resource, Vec2};
+use bevy::prelude::{Color, Component, FromWorld, Res, Resource, Vec2};
 
 mod square;
 
@@ -21,8 +21,7 @@ impl BoardProperties {
 
     pub(super) fn transform_to_position(&self, transform: Vec2) -> Option<BoardPosition> {
         let file = ((transform[0] - self.center.x) / self.square_size + 4.0).round() as i32;
-        let rank = ((transform[1] - self.center.y) / self.square_size + 4.0).round() as i32;
-        info!(rank, file);
+        let rank = (-1.0 * (transform[1] - self.center.y) / self.square_size + 4.0).round() as i32;
         if (rank < 0) || (rank > 7) || (file < 0) || (file > 7) {
             None
         } else {
@@ -53,7 +52,7 @@ impl FromWorld for BoardProperties {
     }
 }
 
-#[derive(Component, PartialEq)]
+#[derive(Component, PartialEq, Debug)]
 pub(crate) struct BoardPosition {
     pub(crate) rank: u32,
     pub(crate) file: u32,

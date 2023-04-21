@@ -2,7 +2,7 @@ use std::fs::read_to_string;
 
 use bevy::input::ButtonState;
 use bevy::prelude::{
-    default, AssetServer, Assets, Bundle, Camera, Changed, Commands, Component, EventReader,
+    default, AssetServer, Assets, Bundle, Camera, Commands, Component, EventReader,
     FromWorld, GlobalTransform, Handle, MouseButton, Query, Res, ResMut, Resource, Transform, Vec2,
     Vec3, With,
 };
@@ -156,18 +156,20 @@ pub(super) fn handle_piece_clicks(
     for click in board_click_events.iter() {
         for (piece_position, mut selected) in query.iter_mut() {
             // Check if this piece was clicked on and the button was just pressed
-            if (click.position == *piece_position) && (click.input.state == ButtonState::Pressed) {
+            if click.input.state == ButtonState::Pressed {
                 match click.input.button {
                     MouseButton::Left => {
                         // If the left button was clicked, select it
-                        selected.0 = true;
+                        if click.position == *piece_position {
+                            selected.0 = true;
+                        }
                     }
                     MouseButton::Right => {
                         // If the right button was clicked, deselect it
                         selected.0 = false;
                     }
                     _ => {
-                        continue;
+                        break;
                     }
                 }
             }
@@ -176,7 +178,7 @@ pub(super) fn handle_piece_clicks(
 }
 
 pub(super) fn selected_piece(
-    mut query: Query<(&Selected, &mut Transform), (With<Piece>, Changed<Selected>)>,
+    mut query: Query<(&Selected, &mut Transform), With<Piece>>,
     windows: Res<Windows>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
 ) {
@@ -196,7 +198,7 @@ pub(super) fn selected_piece(
                 *transform = transform.with_translation(Vec3::new(
                     world_position[0],
                     world_position[1],
-                    transform.translation.x,
+                    transform.translation.z,
                 ));
             }
         }

@@ -27,7 +27,7 @@ impl Plugin for CorePlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub(crate) struct Selected(bool);
 
 fn mouse_event_handler(
