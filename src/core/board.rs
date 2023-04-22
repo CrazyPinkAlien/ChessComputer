@@ -2,6 +2,8 @@ use bevy::ecs::system::Commands;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{Color, Component, FromWorld, Res, Resource, Vec2};
 
+use super::piece::Piece;
+
 mod square;
 
 #[derive(Resource)]
@@ -13,9 +15,9 @@ pub struct BoardProperties {
 }
 
 impl BoardProperties {
-    pub(super) fn position_to_transform(&self, rank: u32, file: u32) -> (f32, f32) {
-        let x = (file as f32 - 4.0) * self.square_size + self.center.x;
-        let y = -1.0 * (rank as f32 - 4.0) * self.square_size + self.center.y;
+    pub(super) fn position_to_transform(&self, position: BoardPosition) -> (f32, f32) {
+        let x = (position.file as f32 - 4.0) * self.square_size + self.center.x;
+        let y = -1.0 * (position.rank as f32 - 4.0) * self.square_size + self.center.y;
         (x, y)
     }
 
@@ -52,10 +54,43 @@ impl FromWorld for BoardProperties {
     }
 }
 
-#[derive(Component, PartialEq, Debug)]
+#[derive(Resource)]
+pub struct BoardState {
+    board: Vec<Vec<Option<Piece>>>
+}
+
+impl FromWorld for BoardState {
+    fn from_world(_world: &mut bevy::prelude::World) -> Self {
+        // Row of the array
+        let mut row = Vec::new();
+        row.resize(8, None);
+        // Fill board with these rows
+        let mut board = Vec::new();
+        board.resize(8, row.clone());
+        BoardState {
+            board
+        }
+    }
+}
+
+impl BoardState {
+    pub(crate) fn add(&mut self, piece: Piece, position: BoardPosition) {
+        let rank = position.rank as usize;
+        let file = position.file as usize;
+        self.board[rank][file] = Some(piece);
+    }
+
+    pub(crate) fn remove(&mut self, position: BoardPosition) {
+        let rank = position.rank as usize;
+        let file = position.file as usize;
+        self.board[rank][file] = None;
+    }
+}
+
+#[derive(Component, PartialEq, Debug, Copy, Clone)]
 pub(crate) struct BoardPosition {
-    pub(crate) rank: u32,
-    pub(crate) file: u32,
+    rank: u32,
+    file: u32,
 }
 
 impl BoardPosition {
@@ -77,7 +112,7 @@ pub(super) fn setup(mut commands: Commands, properties: Res<BoardProperties>) {
     for rank in 0..8 {
         for file in 0..8 {
             let color = properties.position_to_color(rank, file);
-            let (x, y) = properties.position_to_transform(rank, file);
+            let (x, y) = properties.position_to_transform(BoardPosition { rank, file });
             squares.push(square::SquareBundle::new(
                 x,
                 y,

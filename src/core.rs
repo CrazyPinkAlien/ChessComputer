@@ -1,7 +1,7 @@
 use bevy::app::App;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{
-    info, Camera, Component, EventReader, EventWriter, GlobalTransform, Plugin, Query, Res, With,
+    Camera, EventReader, EventWriter, GlobalTransform, Plugin, Query, Res, With,
 };
 use bevy::window::Windows;
 
@@ -18,6 +18,7 @@ impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<board::BoardProperties>()
             .init_resource::<piece::PieceProperties>()
+            .init_resource::<board::BoardState>()
             .add_startup_system(board::setup)
             .add_startup_system(piece::setup)
             .add_event::<board::BoardClickEvent>()
@@ -26,9 +27,6 @@ impl Plugin for CorePlugin {
             .add_system(piece::dragged_piece);
     }
 }
-
-#[derive(Component, Debug)]
-pub(crate) struct Selected(bool);
 
 fn mouse_event_handler(
     windows: Res<Windows>,
@@ -49,7 +47,6 @@ fn mouse_event_handler(
             // Check if the mouse is over the board
             let board_position = properties.transform_to_position(world_position);
             if board_position.is_some() {
-                info!("{:?}", input);
                 // Send a board click event
                 board_click_event.send(BoardClickEvent {
                     position: board_position.unwrap(),
