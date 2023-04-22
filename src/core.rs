@@ -1,16 +1,17 @@
 use bevy::app::App;
 use bevy::input::mouse::MouseButtonInput;
-use bevy::prelude::{
-    Camera, EventReader, EventWriter, GlobalTransform, Plugin, Query, Res, With,
-};
+use bevy::prelude::{Camera, EventReader, EventWriter, GlobalTransform, Plugin, Query, Res, With};
 use bevy::window::Windows;
 
 use crate::ui::MainCamera;
 
 use self::board::{BoardClickEvent, BoardProperties};
+use self::state::BoardState;
 
 mod board;
+pub(crate) mod fen;
 mod piece;
+pub(crate) mod state;
 
 pub(super) struct CorePlugin;
 
@@ -18,13 +19,15 @@ impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<board::BoardProperties>()
             .init_resource::<piece::PieceProperties>()
-            .init_resource::<board::BoardState>()
+            .init_resource::<state::BoardState>()
             .add_startup_system(board::setup)
             .add_startup_system(piece::setup)
             .add_event::<board::BoardClickEvent>()
+            .add_event::<SetupBoardEvent>()
             .add_system(mouse_event_handler)
             .add_system(piece::handle_piece_clicks)
-            .add_system(piece::dragged_piece);
+            .add_system(piece::dragged_piece)
+            .add_system(piece::setup_pieces);
     }
 }
 
@@ -46,13 +49,15 @@ fn mouse_event_handler(
         {
             // Check if the mouse is over the board
             let board_position = properties.transform_to_position(world_position);
-            if board_position.is_some() {
-                // Send a board click event
-                board_click_event.send(BoardClickEvent {
-                    position: board_position.unwrap(),
-                    input: *input,
-                });
-            }
+            // Send a board click event
+            board_click_event.send(BoardClickEvent {
+                position: board_position,
+                input: *input,
+            });
         }
     }
+}
+
+pub struct SetupBoardEvent {
+    pub state: BoardState,
 }

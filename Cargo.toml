@@ -8,3 +8,5 @@ opt-level = 3
 
 [dependencies]
 bevy = "0.9.1"
+strum = "0.24"
+strum_macros = "0.24"
