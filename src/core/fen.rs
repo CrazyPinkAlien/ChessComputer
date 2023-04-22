@@ -8,7 +8,7 @@ impl Fen {
     fn from_string(fen_string: String) -> Self {
         // First split fen into sections separated by spaces
         let split_fen = fen_string.split_whitespace().collect::<Vec<&str>>();
-        // Get piece placement data
+        // Get piece_info placement data
         let piece_placement = split_fen[0];
         // Create Fen object
         Fen {

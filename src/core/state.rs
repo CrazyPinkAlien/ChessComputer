@@ -2,11 +2,11 @@ use bevy::prelude::{FromWorld, Resource};
 
 use super::board::BoardPosition;
 use super::fen::Fen;
-use super::piece::{Piece, PieceColor, PieceType};
+use super::piece::{PieceInfo, PieceColor, PieceType};
 
 #[derive(Resource)]
 pub struct BoardState {
-    pub board: Vec<Vec<Option<Piece>>>,
+    pub board: Vec<Vec<Option<PieceInfo>>>,
 }
 
 impl FromWorld for BoardState {
@@ -52,7 +52,7 @@ impl BoardState {
                         _ => panic!("Unrecognised symbol in FEN: {}", symbol),
                     };
                     board_state.add_piece(
-                        Piece::new(piece_color, piece_type),
+                        PieceInfo::new(piece_color, piece_type),
                         BoardPosition::new(rank, file),
                     );
                     file += 1;
@@ -66,10 +66,10 @@ impl BoardState {
         board_state
     }
 
-    fn add_piece(&mut self, piece: Piece, position: BoardPosition) {
+    fn add_piece(&mut self, piece_info: PieceInfo, position: BoardPosition) {
         let rank = position.rank as usize;
         let file = position.file as usize;
-        self.board[rank][file] = Some(piece);
+        self.board[rank][file] = Some(piece_info);
     }
 
     fn remove_piece(&mut self, position: BoardPosition) {
@@ -80,11 +80,11 @@ impl BoardState {
 
     pub fn move_piece(
         &mut self,
-        piece: Piece,
+        piece_info: PieceInfo,
         old_position: BoardPosition,
         new_position: BoardPosition,
     ) {
         self.remove_piece(old_position);
-        self.add_piece(piece, new_position);
+        self.add_piece(piece_info, new_position);
     }
 }
