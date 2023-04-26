@@ -1,5 +1,4 @@
 use bevy::ecs::system::Commands;
-use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{Color, Component, FromWorld, Res, Resource, Vec2};
 
 mod square;
@@ -26,8 +25,8 @@ impl BoardProperties {
             None
         } else {
             Some(BoardPosition {
-                rank: (rank as u32),
-                file: (file as u32),
+                rank: (rank as usize),
+                file: (file as usize),
             })
         }
     }
@@ -54,22 +53,17 @@ impl FromWorld for BoardProperties {
 
 #[derive(Component, PartialEq, Debug, Copy, Clone)]
 pub struct BoardPosition {
-    pub rank: u32,
-    pub file: u32,
+    pub rank: usize,
+    pub file: usize,
 }
 
 impl BoardPosition {
-    pub(super) fn new(rank: u32, file: u32) -> Self {
+    pub(super) fn new(rank: usize, file: usize) -> Self {
         if (rank > 8) | (file > 8) {
             panic!("Invalid rank or file value: {}, {}", rank, file)
         }
         BoardPosition { rank, file }
     }
-}
-
-pub struct BoardClickEvent {
-    pub position: Option<BoardPosition>,
-    pub input: MouseButtonInput,
 }
 
 pub fn setup(mut commands: Commands, properties: Res<BoardProperties>) {

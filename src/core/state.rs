@@ -2,11 +2,11 @@ use bevy::prelude::{FromWorld, Resource};
 
 use super::board::BoardPosition;
 use super::fen::Fen;
-use super::piece::{PieceInfo, PieceColor, PieceType};
+use super::piece::{PieceColor, PieceType};
 
-#[derive(Resource)]
+#[derive(Resource, Copy, Clone, Debug)]
 pub struct BoardState {
-    pub board: Vec<Vec<Option<PieceInfo>>>,
+    pub board: [[Option<(PieceColor, PieceType)>; 8]; 8]
 }
 
 impl FromWorld for BoardState {
@@ -17,12 +17,7 @@ impl FromWorld for BoardState {
 
 impl BoardState {
     fn empty_board() -> Self {
-        // Row of the array
-        let mut row = Vec::new();
-        row.resize(8, None);
-        // Fill board with these rows
-        let mut board = Vec::new();
-        board.resize(8, row.clone());
+        let board = [[None; 8]; 8];
         BoardState { board }
     }
 
@@ -35,7 +30,7 @@ impl BoardState {
         for rank_str in fen.piece_placement.split("/") {
             for symbol in rank_str.chars().collect::<Vec<char>>() {
                 if symbol.is_digit(9) {
-                    file += symbol.to_digit(9).unwrap();
+                    file += symbol.to_digit(9).unwrap() as usize;
                 } else {
                     let piece_color = if symbol.is_uppercase() {
                         PieceColor::White
@@ -52,7 +47,8 @@ impl BoardState {
                         _ => panic!("Unrecognised symbol in FEN: {}", symbol),
                     };
                     board_state.add_piece(
-                        PieceInfo::new(piece_color, piece_type),
+                        piece_color,
+                        piece_type,
                         BoardPosition::new(rank, file),
                     );
                     file += 1;
@@ -66,25 +62,17 @@ impl BoardState {
         board_state
     }
 
-    fn add_piece(&mut self, piece_info: PieceInfo, position: BoardPosition) {
-        let rank = position.rank as usize;
-        let file = position.file as usize;
-        self.board[rank][file] = Some(piece_info);
+    fn add_piece(&mut self, piece_color: PieceColor, piece_type: PieceType, position: BoardPosition) {
+        self.board[position.rank][position.file] = Some((piece_color, piece_type));
     }
 
-    fn remove_piece(&mut self, position: BoardPosition) {
-        let rank = position.rank as usize;
-        let file = position.file as usize;
-        self.board[rank][file] = None;
+    pub fn remove_piece(&mut self, position: BoardPosition) {
+        self.board[position.rank][position.file] = None;
     }
 
-    pub fn move_piece(
-        &mut self,
-        piece_info: PieceInfo,
-        old_position: BoardPosition,
-        new_position: BoardPosition,
-    ) {
-        self.remove_piece(old_position);
-        self.add_piece(piece_info, new_position);
+    pub fn move_piece(&mut self, position: BoardPosition, new_position: BoardPosition) {
+        self.board[new_position.rank][new_position.file] = self.board[position.rank][position.file];
+        self.remove_piece(position);
     }
+
 }

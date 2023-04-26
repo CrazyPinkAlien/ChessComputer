@@ -2,17 +2,36 @@ use bevy::prelude::Component;
 
 use crate::core::board::BoardPosition;
 
-use super::Piece;
+use super::{Piece, PieceType, PieceColor};
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Pawn {
+    color: PieceColor,
     position: BoardPosition,
     moved: bool,
 }
 
+impl Pawn {
+    pub fn new(position: BoardPosition, color: PieceColor) -> Box<Self> {
+        Box::new(Pawn { color, position, moved: false })
+    }
+}
+
 impl Piece for Pawn {
-    fn new() -> Self {
-        Pawn { position: BoardPosition::new(0, 0), moved: false }
+    fn get_type(&self) -> PieceType {
+        PieceType::Pawn
+    }
+
+    fn get_color(&self) -> PieceColor {
+        self.color
+    }
+
+    fn get_position(&self) -> BoardPosition {
+        self.position
+    }
+
+    fn set_position(&mut self, new_position: BoardPosition) {
+        self.position = new_position;
     }
 
     fn get_moves(&self) -> Vec<BoardPosition> {

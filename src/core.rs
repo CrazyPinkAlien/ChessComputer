@@ -5,7 +5,7 @@ use bevy::window::Windows;
 
 use crate::ui::MainCamera;
 
-use self::board::{BoardClickEvent, BoardProperties};
+use self::board::{BoardProperties, BoardPosition};
 use self::state::BoardState;
 
 mod board;
@@ -22,13 +22,23 @@ impl Plugin for CorePlugin {
             .init_resource::<state::BoardState>()
             .add_startup_system(board::setup)
             .add_startup_system(piece::setup)
-            .add_event::<board::BoardClickEvent>()
+            .add_event::<BoardClickEvent>()
             .add_event::<SetupBoardEvent>()
             .add_system(mouse_event_handler)
             .add_system(piece::handle_piece_clicks)
             .add_system(piece::dragged_piece)
             .add_system(piece::setup_pieces);
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct SetupBoardEvent {
+    pub state: BoardState,
+}
+
+pub struct BoardClickEvent {
+    pub position: Option<BoardPosition>,
+    pub input: MouseButtonInput,
 }
 
 fn mouse_event_handler(
@@ -56,8 +66,4 @@ fn mouse_event_handler(
             });
         }
     }
-}
-
-pub struct SetupBoardEvent {
-    pub state: BoardState,
 }

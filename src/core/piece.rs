@@ -1,3 +1,4 @@
+use bevy::ecs::component::TableStorage;
 use bevy::input::ButtonState;
 use bevy::prelude::{
     default, AssetServer, Assets, Bundle, Camera, Commands, Component, EventReader, EventWriter,
@@ -8,15 +9,16 @@ use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
 use bevy::window::Windows;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+use dyn_clone::DynClone;
 
 use crate::ui::MainCamera;
 
 use self::pawn::Pawn;
 
-use super::board::{BoardClickEvent, BoardPosition, BoardProperties};
+use super::board::{BoardPosition, BoardProperties};
 use super::fen::Fen;
 use super::state::BoardState;
-use super::SetupBoardEvent;
+use super::{SetupBoardEvent, BoardClickEvent};
 
 mod pawn;
 
@@ -51,18 +53,25 @@ pub enum PieceType {
     Pawn,
 }
 
-#[derive(Component, Clone, Copy, PartialEq)]
+trait Piece: Send + Sync + DynClone + 'static + Component<Storage = TableStorage> {
+    fn get_type(&self) -> PieceType;
+    fn get_color(&self) -> PieceColor;
+    fn get_position(&self) -> BoardPosition;
+    fn set_position(&mut self, new_position: BoardPosition);
+    fn get_moves(&self) -> Vec<BoardPosition>;
+}
+
+#[derive(Component)]
 pub struct PieceInfo {
-    piece_color: PieceColor,
-    piece_type: PieceType,
+    piece: Box<dyn Piece>,
 }
 
 impl PieceInfo {
-    pub fn new(piece_color: PieceColor, piece_type: PieceType) -> Self {
-        PieceInfo {
-            piece_color,
-            piece_type,
-        }
+    pub fn new(piece_color: PieceColor, piece_type: PieceType, position: BoardPosition) -> Self {
+        let piece = match piece_type {
+            _ => Pawn::new(position, piece_color)
+        };
+        PieceInfo { piece }
     }
 }
 
@@ -70,24 +79,24 @@ impl PieceInfo {
 pub struct Dragging(bool);
 
 #[derive(Bundle)]
-pub(super) struct PieceBundle<T: Piece + Sync + Send + 'static + Component> {
-    piece: T,
-    piece_info: PieceInfo,
+pub(super) struct PieceBundle {
+    piece: PieceInfo,
     dragging: Dragging,
 
     #[bundle]
     sprite: SpriteSheetBundle,
 }
 
-impl<T: Piece + Sync + Send + 'static + Component> PieceBundle<T> {
+impl PieceBundle {
     fn new(
-        piece_info: PieceInfo,
+        piece_type: PieceType,
+        piece_color: PieceColor,
         texture_atlas_handle: &Handle<TextureAtlas>,
         board_position: BoardPosition,
         piece_properties: &Res<PieceProperties>,
         board_properties: &Res<BoardProperties>,
     ) -> Self {
-        let sprite_sheet_index = (piece_info.piece_type as u8) + 6 * (piece_info.piece_color as u8);
+        let sprite_sheet_index = (piece_type as u8) + 6 * (piece_color as u8);
         let (x, y) = board_properties.position_to_transform(board_position);
         let sprite = SpriteSheetBundle {
             sprite: TextureAtlasSprite::new(sprite_sheet_index.into()),
@@ -97,12 +106,28 @@ impl<T: Piece + Sync + Send + 'static + Component> PieceBundle<T> {
             ..default()
         };
         PieceBundle {
-            piece: piece_from_type(piece_info.piece_type),
-            piece_info: piece_info,
+            piece: PieceInfo::new(piece_color, piece_type, board_position),
             dragging: Dragging(false),
             sprite: sprite,
         }
     }
+}
+
+fn move_piece(transform: &mut Transform, piece: &mut PieceInfo, new_position: BoardPosition, board_properties: &Res<BoardProperties>, board_state: &mut ResMut<BoardState>) {
+    // Update the board state
+    board_state.move_piece(piece.piece.get_position(), new_position);
+    // Change its position
+    piece.piece.set_position(new_position);
+    // Change its transform
+    let new_transform = board_properties.position_to_transform(new_position);
+    *transform = transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
+}
+
+fn remove_piece(piece: &mut PieceInfo, visibility: &mut Visibility, board_state: &mut ResMut<BoardState>) {
+    // Update the board state
+    board_state.remove_piece(piece.piece.get_position());
+    // Make it invisible
+    *visibility = Visibility::INVISIBLE;
 }
 
 pub fn setup(
@@ -127,15 +152,13 @@ pub fn setup(
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     // Instantiate pieces
-    let mut pieces: Vec<PieceBundle<_>> = Vec::with_capacity(32);
+    let mut pieces: Vec<PieceBundle> = Vec::with_capacity(32);
     for piece_color in PieceColor::iter() {
         for (index, piece_type) in PieceType::iter().enumerate() {
             for _number in 0..piece_properties.spawn_numbers[index] {
-                pieces.push(PieceBundle::<T: Piece + Sync + Send + 'static + Component>::new(
-                    PieceInfo {
-                        piece_color,
-                        piece_type,
-                    },
+                pieces.push(PieceBundle::new(
+                    piece_type,
+                    piece_color,
                     &texture_atlas_handle,
                     BoardPosition::new(0, 0),
                     &piece_properties,
@@ -153,25 +176,24 @@ pub fn setup(
 
 pub fn setup_pieces(
     mut setup_events: EventReader<SetupBoardEvent>,
-    mut query: Query<(&PieceInfo, &mut BoardPosition, &mut Transform, &mut Visibility)>,
+    mut query: Query<(&mut PieceInfo, &mut Transform, &mut Visibility)>,
     properties: Res<BoardProperties>,
+    mut state: ResMut<BoardState>
 ) {
     // Create array of bools to track which squares have been populated
-    let mut row = Vec::new();
-    row.resize(8, false);
-    let mut populated = Vec::new();
-    populated.resize(8, row.clone());
-    for event in setup_events.iter() {
-        for (piece_info, mut position, mut transform, mut visibility) in query.iter_mut() {
+    let mut populated = [[false; 8]; 8];
+    for &event in setup_events.iter() {
+        for (mut piece, mut transform, mut visibility) in query.iter_mut() {
             *visibility = Visibility::INVISIBLE;
             'outer: for rank in 0..8 {
                 for file in 0..8 {
                     if (event.state.board[rank][file].is_some())
-                        && (event.state.board[rank][file].unwrap() == *piece_info)
+                        && (event.state.board[rank][file].unwrap().0 == piece.piece.get_color())
+                        && (event.state.board[rank][file].unwrap().1 == piece.piece.get_type())
                         && !populated[rank][file]
                     {
-                        let new_position = BoardPosition::new(rank as u32, file as u32);
-                        move_piece(&mut position, transform.as_mut(), new_position, &properties);
+                        let new_position = BoardPosition::new(rank, file);
+                        move_piece(transform.as_mut(), piece.as_mut(), new_position, &properties, &mut state);
                         *visibility = Visibility::VISIBLE;
                         populated[rank][file] = true;
                         break 'outer;
@@ -186,66 +208,52 @@ pub fn handle_piece_clicks(
     mut board_click_events: EventReader<BoardClickEvent>,
     mut query: Query<(
         &mut Visibility,
-        &mut BoardPosition,
+        &mut PieceInfo,
         &mut Transform,
         &mut Dragging,
     )>,
     properties: Res<BoardProperties>,
+    mut state: ResMut<BoardState>
 ) {
     for click in board_click_events.iter() {
-        for (mut visibility, mut piece_position, mut piece_transform, mut dragging) in
+        for (mut visibility, mut piece, mut piece_transform, mut dragging) in
             query.iter_mut()
         {
             match click.input.button {
                 MouseButton::Left => {
                     if click.input.state == ButtonState::Pressed {
                         if (click.position.is_some())
-                            && (click.position.unwrap() == *piece_position)
+                            && (click.position.unwrap() == piece.piece.get_position())
                         {
-                            // Start dragging the piece_info
+                            // Start dragging the piece
                             dragging.0 = true;
                         } else {
                             dragging.0 = false;
                         }
                     } else if click.input.state == ButtonState::Released {
                         if (click.position.is_some()) && (dragging.0) {
-                            // When the button is released move the piece_info to that square
-                            move_piece(
-                                &mut piece_position,
-                                &mut piece_transform,
-                                click.position.unwrap(),
-                                &properties,
-                            );
+                            // When the button is released move the piece to that square
+                            move_piece(piece_transform.as_mut(), piece.as_mut(), click.position.unwrap(), &properties, &mut state);
                             dragging.0 = false;
                         } else if click.position.is_some() {
                             // Take any pieces that were already there
-                            if click.position.unwrap() == *piece_position {
-                                take_piece(visibility.as_mut());
+                            if click.position.unwrap() == piece.piece.get_position() {
+                                remove_piece(piece.as_mut(), visibility.as_mut(), &mut state);
                             }
                         } else {
-                            // Stop dragging and return the piece_info to its original position
+                            // Stop dragging and return the piece to its original position
                             dragging.0 = false;
-                            let new_position = piece_position.clone();
-                            move_piece(
-                                &mut piece_position,
-                                &mut piece_transform,
-                                new_position,
-                                &properties,
-                            );
+                            let new_position = piece.piece.get_position().clone();
+                            move_piece(piece_transform.as_mut(), piece.as_mut(), new_position, &properties, &mut state);
                         }
                     }
                 }
                 MouseButton::Right => {
-                    // If the right button was clicked, stop dragging and return the piece_info to its original position
+                    // If the right button was clicked, stop dragging and return the piece to its original position
                     if click.input.state == ButtonState::Pressed {
                         dragging.0 = false;
-                        let new_position = piece_position.clone();
-                        move_piece(
-                            &mut piece_position,
-                            &mut piece_transform,
-                            new_position,
-                            &properties,
-                        );
+                        let new_position = piece.piece.get_position().clone();
+                        move_piece(piece_transform.as_mut(), piece.as_mut(), new_position, &properties, &mut state)
                     }
                 }
                 _ => {
@@ -271,9 +279,9 @@ pub fn dragged_piece(
         .map(|ray| ray.origin.truncate())
     {
         for (dragging, mut transform) in query.iter_mut() {
-            // Check if this piece_info is selected
+            // Check if this piece is selected
             if dragging.0 == true {
-                // Move this piece_info to follow the mouse
+                // Move this piece to follow the mouse
                 *transform = transform.with_translation(Vec3::new(
                     world_position[0],
                     world_position[1],
@@ -281,35 +289,5 @@ pub fn dragged_piece(
                 ));
             }
         }
-    }
-}
-
-fn move_piece(
-    position: &mut BoardPosition,
-    transform: &mut Transform,
-    new_position: BoardPosition,
-    properties: &Res<BoardProperties>,
-) {
-    // Change its board position
-    *position = new_position;
-
-    // Change its transform
-    let new_transform = properties.position_to_transform(new_position);
-    *transform = transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
-}
-
-fn take_piece(visibility: &mut Visibility) {
-    // Make the piece_info invisible
-    *visibility = Visibility::INVISIBLE;
-}
-
-trait Piece {
-    fn new() -> Self;
-    fn get_moves(&self) -> Vec<BoardPosition>;
-}
-
-fn piece_from_type(piece_type: PieceType) -> impl Piece {
-    match piece_type {
-        _ => Pawn::new()
     }
 }
