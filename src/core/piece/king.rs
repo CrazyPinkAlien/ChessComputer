@@ -5,16 +5,16 @@ use crate::core::board::BoardPosition;
 use super::{Piece, PieceColor, PieceType};
 
 #[derive(Component, Clone, Debug)]
-pub struct Pawn {
+pub struct King {
     color: PieceColor,
     starting_position: BoardPosition,
     position: BoardPosition,
     moved: bool,
 }
 
-impl Pawn {
+impl King {
     pub fn new(position: BoardPosition, color: PieceColor) -> Box<Self> {
-        Box::new(Pawn {
+        Box::new(King {
             color,
             starting_position: position,
             position,
@@ -23,9 +23,9 @@ impl Pawn {
     }
 }
 
-impl Piece for Pawn {
+impl Piece for King {
     fn get_type(&self) -> PieceType {
-        PieceType::Pawn
+        PieceType::King
     }
 
     fn get_color(&self) -> PieceColor {
@@ -50,17 +50,16 @@ impl Piece for Pawn {
 
     fn get_moves(&self) -> Vec<BoardPosition> {
         let mut moves = Vec::new();
-        // Can move forward 1
-        moves.push(BoardPosition::new(
-            (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
-            self.position.file,
-        ));
-        if !self.moved {
-            // Can move forward 2
-            moves.push(BoardPosition::new(
-                (self.position.rank as i32 + 2 * self.move_direction()).clamp(0, 7) as usize,
-                self.position.file,
-            ));
+        for rank in 0..8 {
+            for file in 0..8 {
+                if (rank == self.position.rank && self.position.file.abs_diff(file) == 1)
+                    || (file == self.position.file && self.position.rank.abs_diff(rank) == 1)
+                    || (self.position.file.abs_diff(file) == 1
+                        && self.position.rank.abs_diff(rank) == 1)
+                {
+                    moves.push(BoardPosition::new(rank, file));
+                }
+            }
         }
         moves
     }
@@ -71,29 +70,10 @@ impl Piece for Pawn {
     }
 
     fn possible_capture(&self, new_position: BoardPosition) -> bool {
-        let moves = vec![
-            BoardPosition::new(
-                (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
-                (self.position.file + 1).clamp(0, 7),
-            ),
-            BoardPosition::new(
-                (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
-                (self.position.file - 1).clamp(0, 7),
-            ),
-        ];
-        moves.contains(&new_position)
+        self.possible_move(new_position)
     }
 
     fn is_sliding(&self) -> bool {
         true
-    }
-}
-
-impl Pawn {
-    fn move_direction(&self) -> i32 {
-        match self.color {
-            PieceColor::White => -1,
-            PieceColor::Black => 1,
-        }
     }
 }

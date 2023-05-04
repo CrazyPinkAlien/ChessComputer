@@ -1,41 +1,80 @@
 use bevy::app::App;
 use bevy::input::mouse::MouseButtonInput;
-use bevy::prelude::{Camera, EventReader, EventWriter, GlobalTransform, Plugin, Query, Res, With};
+use bevy::prelude::{
+    Camera, EventReader, EventWriter, GlobalTransform, Plugin, Query, Res, SystemSet, With,
+};
 use bevy::window::Windows;
 
 use crate::ui::MainCamera;
 
-use self::board::{BoardProperties, BoardPosition};
-use self::state::BoardState;
+use self::board::{BoardPosition, BoardProperties};
+use crate::core::piece::PieceMoveEvent;
 
 mod board;
-pub(crate) mod fen;
+mod fen;
+mod move_checker;
 mod piece;
-pub(crate) mod state;
+mod state;
+
+static BOARD_SIZE: usize = 8;
 
 pub(super) struct CorePlugin;
 
 impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<board::BoardProperties>()
-            .init_resource::<piece::PieceProperties>()
             .init_resource::<state::BoardState>()
             .add_startup_system(board::setup)
             .add_startup_system(piece::setup)
             .add_event::<BoardClickEvent>()
-            .add_event::<SetupBoardEvent>()
-            .add_system(mouse_event_handler)
-            .add_system(piece::handle_piece_clicks)
-            .add_system(piece::dragged_piece)
-            .add_system(piece::setup_pieces);
+            .add_event::<ResetBoardEvent>()
+            .add_event::<PieceMoveEvent>()
+            .add_system_set(
+                SystemSet::new()
+                    .label("mouse")
+                    .with_system(mouse_event_handler),
+            )
+            .add_system_set(
+                SystemSet::new()
+                    .label("piece_pre_move")
+                    .after("mouse")
+                    .with_system(piece::piece_click_handler)
+                    .with_system(piece::piece_dragger)
+                    .with_system(piece::reset_pieces),
+            )
+            .add_system_set(
+                SystemSet::new()
+                    .label("piece_move")
+                    .after("piece_pre_move")
+                    .with_system(piece::piece_mover),
+            )
+            .add_system_set(
+                SystemSet::new()
+                    .label("piece_post_move")
+                    .after("piece_move")
+                    .with_system(piece::piece_move_audio)
+                    .with_system(piece::piece_taker),
+            )
+            .add_system_set(
+                SystemSet::new()
+                    .label("state")
+                    .after("piece_post_move")
+                    .with_system(state::piece_move_handler)
+                    .with_system(state::reset_board_state),
+            )
+            .add_system_set(
+                SystemSet::new()
+                    .label("board")
+                    .after("state")
+                    .with_system(board::highlight_valid_squares),
+            );
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct SetupBoardEvent {
-    pub state: BoardState,
-}
+pub struct ResetBoardEvent;
 
+#[derive(Debug, Copy, Clone)]
 pub struct BoardClickEvent {
     pub position: Option<BoardPosition>,
     pub input: MouseButtonInput,
@@ -60,10 +99,11 @@ fn mouse_event_handler(
             // Check if the mouse is over the board
             let board_position = properties.transform_to_position(world_position);
             // Send a board click event
-            board_click_event.send(BoardClickEvent {
+            let event = BoardClickEvent {
                 position: board_position,
                 input: *input,
-            });
+            };
+            board_click_event.send(event);
         }
     }
 }

@@ -8,9 +8,7 @@ use bevy::ui::{
     AlignItems, BackgroundColor, Interaction, JustifyContent, Size, Style, UiRect, Val,
 };
 
-use crate::core::fen::Fen;
-use crate::core::state::BoardState;
-use crate::core::SetupBoardEvent;
+use crate::core::ResetBoardEvent;
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -77,16 +75,12 @@ fn button_system(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
-    mut setup_event: EventWriter<SetupBoardEvent>,
+    mut setup_event: EventWriter<ResetBoardEvent>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Clicked => {
-                setup_event.send(SetupBoardEvent {
-                    state: BoardState::from_fen(Fen::from_file(
-                        "assets/fens/starting_position.fen",
-                    )),
-                });
+                setup_event.send(ResetBoardEvent);
                 *color = PRESSED_BUTTON.into();
             }
             Interaction::Hovered => {
