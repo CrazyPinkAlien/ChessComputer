@@ -86,11 +86,6 @@ impl BoardState {
         self.board[new_position.rank][new_position.file] = self.board[position.rank][position.file];
         self.remove_piece(position);
     }
-
-    pub fn is_check(&self, color: PieceColor) -> bool {
-        // TODO
-        false
-    }
 }
 
 pub fn piece_move_handler(mut events: EventReader<PieceMoveEvent>, mut state: ResMut<BoardState>) {

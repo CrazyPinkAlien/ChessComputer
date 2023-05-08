@@ -71,17 +71,15 @@ impl Piece for Pawn {
     }
 
     fn possible_capture(&self, new_position: BoardPosition) -> bool {
-        let moves = vec![
-            BoardPosition::new(
-                (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
-                (self.position.file + 1).clamp(0, 7),
-            ),
-            BoardPosition::new(
-                (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
-                (self.position.file - 1).clamp(0, 7),
-            ),
-        ];
-        moves.contains(&new_position)
+        if (0 <= self.position.rank as i32 + self.move_direction())
+            && (self.position.rank as i32 + self.move_direction() < 8)
+            && (self.position.rank as i32 + self.move_direction() == new_position.rank as i32)
+            && (((self.position.file > 0) && (new_position.file == self.position.file - 1))
+                || ((self.position.file < 7) && (new_position.file == self.position.file + 1)))
+        {
+            return true;
+        }
+        false
     }
 
     fn is_sliding(&self) -> bool {
