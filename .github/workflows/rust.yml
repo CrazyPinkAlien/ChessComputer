@@ -1,4 +1,4 @@
-name: Rust
+name: Cargo build and test
 
 on:
   push:

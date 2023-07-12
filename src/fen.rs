@@ -1,12 +1,12 @@
 use std::fs::read_to_string;
 
-pub struct Fen {
-    pub piece_placement: String,
-    pub active_color: String,
+pub(super) struct Fen {
+    piece_placement: String,
+    active_color: String,
 }
 
 impl Fen {
-    fn from_string(fen_string: String) -> Self {
+    fn from_string(fen_string: &str) -> Self {
         // First split fen into sections separated by spaces
         let split_fen = fen_string.split_whitespace().collect::<Vec<&str>>();
         // Get piece_info placement data
@@ -22,6 +22,14 @@ impl Fen {
 
     pub fn from_file(filename: &str) -> Self {
         let fen_string = read_to_string(filename).expect("Starting FEN not found.");
-        Fen::from_string(fen_string)
+        Fen::from_string(&fen_string)
+    }
+
+    pub fn piece_placement(&self) -> &String {
+        &self.piece_placement
+    }
+
+    pub fn active_color(&self) -> &String {
+        &self.active_color
     }
 }

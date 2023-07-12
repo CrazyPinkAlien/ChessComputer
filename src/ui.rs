@@ -1,14 +1,20 @@
 use bevy::app::{App, Plugin};
+use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{
-    default, AssetServer, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color,
-    Commands, Component, EventWriter, NodeBundle, Query, Res, TextBundle, With,
+    default, AssetServer, BuildChildren, Button, ButtonBundle, Camera, Camera2dBundle, Changed,
+    Color, Commands, Component, EventReader, EventWriter, GlobalTransform, NodeBundle, Query, Res,
+    TextBundle, With,
 };
 use bevy::text::TextStyle;
 use bevy::ui::{
     AlignItems, BackgroundColor, Interaction, JustifyContent, Size, Style, UiRect, Val,
 };
+use bevy::window::Windows;
 
-use crate::core::ResetBoardEvent;
+use crate::chess_board::{BoardPosition, ResetBoardEvent};
+
+mod board;
+mod piece;
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -18,12 +24,27 @@ pub(super) struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup).add_system(button_system);
+        app.init_resource::<piece::PieceProperties>()
+            .init_resource::<board::BoardProperties>()
+            .add_event::<BoardClickEvent>()
+            .add_startup_system(setup)
+            .add_startup_system(board::setup)
+            .add_system(button_system)
+            .add_system(mouse_event_handler)
+            .add_system(piece::piece_creator)
+            .add_system(piece::piece_destroyer)
+            .add_system(piece::piece_click_handler)
+            .add_system(piece::piece_move_audio)
+            .add_system(piece::piece_dragger)
+            .add_system(piece::piece_undragger)
+            .add_system(piece::piece_mover)
+            .add_system(piece::piece_resetter)
+            .add_system(board::highlight_valid_squares);
     }
 }
 
 #[derive(Component)]
-pub struct MainCamera;
+struct MainCamera;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((Camera2dBundle::default(), MainCamera));
@@ -68,6 +89,40 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
                 });
         });
+}
+
+#[derive(Debug, Copy, Clone)]
+struct BoardClickEvent {
+    position: Option<BoardPosition>,
+    input: MouseButtonInput,
+}
+
+fn mouse_event_handler(
+    windows: Res<Windows>,
+    mut mouse_input: EventReader<MouseButtonInput>,
+    properties: Res<board::BoardProperties>,
+    mut board_click_event: EventWriter<BoardClickEvent>,
+    camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
+) {
+    let window = windows.get_primary().unwrap();
+    let (camera, camera_transform) = camera.single();
+    for input in mouse_input.iter() {
+        // Check if the cursor is in the window and convert to world coordinates
+        if let Some(world_position) = window
+            .cursor_position()
+            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+            .map(|ray| ray.origin.truncate())
+        {
+            // Check if the mouse is over the board
+            let board_position = properties.transform_to_position(world_position);
+            // Send a board click event
+            let event = BoardClickEvent {
+                position: board_position,
+                input: *input,
+            };
+            board_click_event.send(event);
+        }
+    }
 }
 
 fn button_system(

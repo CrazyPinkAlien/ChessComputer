@@ -6,13 +6,13 @@ use crate::core::piece::PieceColor;
 use super::{BoardPosition, BoardProperties};
 
 #[derive(Component)]
-pub struct Square;
+struct Square;
 
 #[derive(Component)]
-pub struct SquareColor(pub PieceColor);
+struct SquareColor(PieceColor);
 
 #[derive(Bundle)]
-pub struct SquareBundle {
+struct SquareBundle {
     _p: Square,
     position: BoardPosition,
     color: SquareColor,
@@ -22,7 +22,7 @@ pub struct SquareBundle {
 }
 
 impl SquareBundle {
-    pub fn new(
+    fn new(
         position: BoardPosition,
         size: f32,
         color: PieceColor,

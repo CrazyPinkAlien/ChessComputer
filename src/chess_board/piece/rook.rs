@@ -1,11 +1,11 @@
 use bevy::prelude::Component;
 
-use crate::core::board::BoardPosition;
+use crate::chess_board::{r#move::Move, BoardPosition};
 
 use super::{Piece, PieceColor, PieceType};
 
 #[derive(Component, Clone, Debug)]
-pub struct Rook {
+pub(super) struct Rook {
     color: PieceColor,
     starting_position: BoardPosition,
     position: BoardPosition,
@@ -13,7 +13,7 @@ pub struct Rook {
 }
 
 impl Rook {
-    pub fn new(position: BoardPosition, color: PieceColor) -> Box<Self> {
+    pub(super) fn new(position: BoardPosition, color: PieceColor) -> Box<Self> {
         Box::new(Rook {
             color,
             starting_position: position,
@@ -43,35 +43,34 @@ impl Piece for Rook {
         }
     }
 
-    fn reset(&mut self) {
-        self.position = self.starting_position;
-        self.moved = false;
-    }
-
-    fn get_moves(&self) -> Vec<BoardPosition> {
+    fn get_moves(&self) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..8 {
             for file in 0..8 {
                 if (rank == self.position.rank || file == self.position.file)
                     && (rank != self.position.rank || file != self.position.file)
                 {
-                    moves.push(BoardPosition::new(rank, file));
+                    moves.push(Move::new(self.get_position(), BoardPosition { rank, file }));
                 }
             }
         }
         moves
     }
 
-    fn possible_move(&self, new_position: BoardPosition) -> bool {
-        let valid_moves = self.get_moves();
-        valid_moves.contains(&new_position)
-    }
-
-    fn possible_capture(&self, new_position: BoardPosition) -> bool {
-        self.possible_move(new_position)
-    }
-
     fn is_sliding(&self) -> bool {
         true
+    }
+
+    fn get_starting_position(&self) -> BoardPosition {
+        self.starting_position
+    }
+
+    fn valid_move(&self, end_position: BoardPosition) -> bool {
+        let valid_moves = self.get_moves();
+        valid_moves.contains(&Move::new(self.get_position(), end_position))
+    }
+
+    fn valid_capture(&self, end_position: BoardPosition) -> bool {
+        self.valid_move(end_position)
     }
 }
