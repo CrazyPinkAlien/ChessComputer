@@ -1,7 +1,5 @@
 use bevy::app::App;
-use bevy::prelude::{
-    info, warn, Component, EventReader, EventWriter, Events, Plugin, ResMut, Resource,
-};
+use bevy::prelude::{info, warn, Component, EventReader, EventWriter, Plugin, ResMut, Resource};
 use strum_macros::EnumIter;
 
 use crate::fen::Fen;
@@ -209,14 +207,16 @@ impl ChessBoard {
             }
             // If no piece is here the move must be a valid move
             None => piece.valid_move(piece_move.to())
-        } // TODO No piece in the way for sliding pieces
-        // Finally, the move must not put the active color in check
-        && {let mut test_board = self.clone();
-            test_board.move_piece(piece_move);
-            let check_status = test_board.in_check();
-            check_status.is_none()
-            || check_status.unwrap() != piece.get_color()
         }
+        // No piece in the way for sliding pieces
+        && (!piece.is_sliding() || self.no_piece_along_line(&piece_move.from(), &piece_move.to()))
+        // Finally, the move must not put the active color in check
+        && {
+                let mut test_board = self.clone();
+                test_board.move_piece(piece_move);
+                let check_status = test_board.in_check();
+                check_status.is_none() || check_status.unwrap() != piece.get_color()
+            }
     }
 
     fn get_valid_moves(&self) -> Vec<Move> {
@@ -256,7 +256,7 @@ impl ChessBoard {
     fn remove_piece(
         &mut self,
         remove_position: BoardPosition,
-        mut events: Events<PieceDestroyEvent>,
+        events: &mut EventWriter<PieceDestroyEvent>,
     ) {
         self.board[remove_position.rank][remove_position.file] = None;
         events.send(PieceDestroyEvent {
@@ -285,8 +285,45 @@ impl ChessBoard {
     }
 
     fn in_check(&self) -> Option<PieceColor> {
-        // TODO
+        // Get king locations
+        let mut white_king_location = BoardPosition::new(0, 0);
+        let mut black_king_location = BoardPosition::new(0, 0);
+        for rank in 0..BOARD_SIZE {
+            for file in 0..BOARD_SIZE {
+                if self.board[rank][file].is_some()
+                    && self.board[rank][file].as_ref().unwrap().get_type() == PieceType::King
+                {
+                    match self.board[rank][file].as_ref().unwrap().get_color() {
+                        PieceColor::White => white_king_location = BoardPosition::new(rank, file),
+                        PieceColor::Black => black_king_location = BoardPosition::new(rank, file),
+                    }
+                }
+            }
+        }
+        // Get valid moves
+        let moves = self.get_valid_moves();
+        // Check if any valid moves can take the king
+        for piece_move in moves {
+            if piece_move.to() == white_king_location {
+                return Some(PieceColor::White);
+            } else if piece_move.to() == black_king_location {
+                return Some(PieceColor::Black);
+            }
+        }
         None
+    }
+
+    fn no_piece_along_line(&self, start: &BoardPosition, end: &BoardPosition) -> bool {
+        let mut rank = start.rank() as i32;
+        let mut file = start.file() as i32;
+        while rank as usize != end.rank() || file as usize != end.file() {
+            rank += end.rank() as i32 - start.rank() as i32;
+            file += end.file() as i32 - start.file() as i32;
+            if self.board[rank as usize][file as usize].is_some() {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -297,12 +334,17 @@ fn setup(mut create_event: EventWriter<PieceCreateEvent>, mut board: ResMut<Ches
     );
 }
 
-fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<ChessBoard>) {
+fn make_move(
+    mut move_events: EventReader<PieceMoveEvent>,
+    mut destroy_events: EventWriter<PieceDestroyEvent>,
+    mut board: ResMut<ChessBoard>,
+) {
     for event in move_events.iter() {
         // Move the piece
         board.move_piece(event.piece_move);
 
-        // TODO Take any pieces that were there
+        // Take any pieces that were there
+        board.remove_piece(event.piece_move.to(), &mut destroy_events);
 
         // Change the active color
         board.active_color = match board.active_color {
@@ -319,8 +361,6 @@ fn reset_board_state(
     mut create_event: EventWriter<PieceCreateEvent>,
 ) {
     for _event in setup_events.iter() {
-        // TODO: Despawn all pieces
-
         *board = ChessBoard::from_fen(
             Fen::from_file("assets/fens/starting_position.fen"),
             &mut create_event,

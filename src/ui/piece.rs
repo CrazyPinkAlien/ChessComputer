@@ -161,17 +161,18 @@ pub(super) fn piece_click_handler(
 
 pub(super) fn piece_mover(
     mut piece_move_events: EventReader<PieceMoveEvent>,
-    mut query: Query<(&BoardPosition, &mut Transform), With<PieceTag>>,
+    mut query: Query<(&mut BoardPosition, &mut Transform), With<PieceTag>>,
     board_properties: Res<BoardProperties>,
 ) {
     for event in piece_move_events.iter() {
-        for (position, mut transform) in query.iter_mut() {
-            // TODO I don't think this check is correct
+        for (mut position, mut transform) in query.iter_mut() {
             if *position == event.piece_move().from() {
                 // Change its transform
                 let new_transform = board_properties.position_to_transform(event.piece_move().to());
                 *transform =
                     transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
+                // Change its position
+                *position = event.piece_move().to();
             }
         }
     }
@@ -179,15 +180,25 @@ pub(super) fn piece_mover(
 
 pub(super) fn piece_resetter(
     mut board_reset_events: EventReader<ResetBoardEvent>,
-    mut query: Query<(&StartingPosition, &mut Transform, &mut Dragging), With<PieceTag>>,
+    mut query: Query<
+        (
+            &StartingPosition,
+            &mut Transform,
+            &mut Dragging,
+            &mut BoardPosition,
+        ),
+        With<PieceTag>,
+    >,
     board_properties: Res<BoardProperties>,
 ) {
     for _event in board_reset_events.iter() {
-        for (starting_position, mut transform, mut dragging) in query.iter_mut() {
+        for (starting_position, mut transform, mut dragging, mut position) in query.iter_mut() {
             // Change its transform
             let new_transform = board_properties.position_to_transform(starting_position.0);
             *transform =
                 transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
+            // Change its position
+            *position = starting_position.0;
             // Disable dragging
             dragging.0 = false;
         }

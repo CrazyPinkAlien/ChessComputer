@@ -5,7 +5,7 @@ use bevy::sprite::Sprite;
 use crate::chess_board::r#move::Move;
 use crate::chess_board::{BoardPosition, ChessBoard, PieceColor};
 
-use super::piece::Dragging;
+use super::piece::{Dragging, PieceTag};
 
 mod square;
 
@@ -76,7 +76,7 @@ pub(super) fn setup(mut commands: Commands, properties: Res<BoardProperties>) {
 }
 
 pub(super) fn highlight_valid_squares(
-    piece_query: Query<(&BoardPosition, &Dragging), Changed<Dragging>>,
+    piece_query: Query<(&BoardPosition, &Dragging), (Changed<Dragging>, With<PieceTag>)>,
     mut square_query: Query<
         (&mut Sprite, &BoardPosition, &square::SquareColor),
         With<square::Square>,
