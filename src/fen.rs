@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 
-pub(super) struct Fen {
+#[derive(Debug, Clone)]
+pub struct Fen {
     piece_placement: String,
     active_color: String,
 }

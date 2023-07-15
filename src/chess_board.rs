@@ -50,7 +50,7 @@ pub struct BoardPosition {
 
 impl BoardPosition {
     pub fn new(rank: usize, file: usize) -> Self {
-        if (rank > BOARD_SIZE) | (file > BOARD_SIZE) {
+        if (rank >= BOARD_SIZE) | (file >= BOARD_SIZE) {
             panic!("Invalid rank or file value: {}, {}", rank, file)
         }
         BoardPosition { rank, file }
@@ -65,8 +65,20 @@ impl BoardPosition {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct ResetBoardEvent;
+#[derive(Debug, Clone)]
+pub struct ResetBoardEvent {
+    fen: Fen,
+}
+
+impl ResetBoardEvent {
+    pub fn new(fen: Fen) -> Self {
+        ResetBoardEvent { fen }
+    }
+
+    pub fn fen(&self) -> &Fen {
+        &self.fen
+    }
+}
 
 pub struct PieceMoveEvent {
     piece_move: Move,
@@ -133,7 +145,7 @@ impl ChessBoard {
         }
     }
 
-    fn from_fen(fen: Fen, create_event: &mut EventWriter<PieceCreateEvent>) -> Self {
+    fn from_fen(fen: &Fen, create_event: &mut EventWriter<PieceCreateEvent>) -> Self {
         // Create an empty board state
         let mut board_state = ChessBoard::empty_board();
         // Populate it from the given fen
@@ -329,7 +341,7 @@ impl ChessBoard {
 
 fn setup(mut create_event: EventWriter<PieceCreateEvent>, mut board: ResMut<ChessBoard>) {
     *board = ChessBoard::from_fen(
-        Fen::from_file("assets/fens/starting_position.fen"),
+        &Fen::from_file("assets/fens/starting_position.fen"),
         &mut create_event,
     );
 }
@@ -360,10 +372,60 @@ fn reset_board_state(
     mut board: ResMut<ChessBoard>,
     mut create_event: EventWriter<PieceCreateEvent>,
 ) {
-    for _event in setup_events.iter() {
-        *board = ChessBoard::from_fen(
-            Fen::from_file("assets/fens/starting_position.fen"),
-            &mut create_event,
-        );
+    for event in setup_events.iter() {
+        *board = ChessBoard::from_fen(event.fen(), &mut create_event);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::prelude::Events;
+
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "Invalid rank or file value: 8, 4")]
+    fn test_board_position_rank_to_large() {
+        BoardPosition::new(8, 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid rank or file value: 1, 10")]
+    fn test_board_position_file_to_large() {
+        BoardPosition::new(1, 10);
+    }
+
+    #[test]
+    fn test_chess_board_empty_board() {
+        let empty_board = ChessBoard::empty_board();
+
+        assert_eq!(empty_board.active_color(), PieceColor::White);
+        for rank in 0..BOARD_SIZE {
+            for file in 0..BOARD_SIZE {
+                assert!(empty_board.board[rank][file].is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn test_chess_board_from_fen() {
+        let fen = Fen::from_file("assets/fens/test_position.fen");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<PieceCreateEvent>();
+        app.add_event::<ResetBoardEvent>();
+        app.add_system(reset_board_state);
+
+        // Set reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // TODO Confirm that the chessboard has been set up correctly
     }
 }

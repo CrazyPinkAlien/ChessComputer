@@ -12,6 +12,7 @@ use bevy::ui::{
 use bevy::window::Windows;
 
 use crate::chess_board::{BoardPosition, ResetBoardEvent};
+use crate::fen::Fen;
 
 mod board;
 mod piece;
@@ -135,7 +136,9 @@ fn button_system(
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Clicked => {
-                setup_event.send(ResetBoardEvent);
+                setup_event.send(ResetBoardEvent::new(Fen::from_file(
+                    "assets/fens/starting_position.fen",
+                )));
                 *color = PRESSED_BUTTON.into();
             }
             Interaction::Hovered => {
