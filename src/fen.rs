@@ -1,13 +1,13 @@
 use std::fs::read_to_string;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Fen {
     piece_placement: String,
     active_color: String,
 }
 
 impl Fen {
-    fn from_string(fen_string: &str) -> Self {
+    pub fn from_string(fen_string: &str) -> Self {
         // First split fen into sections separated by spaces
         let split_fen = fen_string.split_whitespace().collect::<Vec<&str>>();
         // Get piece_info placement data

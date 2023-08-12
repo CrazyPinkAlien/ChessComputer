@@ -1,6 +1,6 @@
 use super::BoardPosition;
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Move {
     from: BoardPosition,
     to: BoardPosition,

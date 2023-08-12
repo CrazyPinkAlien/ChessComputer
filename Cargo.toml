@@ -10,6 +10,7 @@ opt-level = 3
 dyn-clone = "1.0"
 strum = "0.24"
 strum_macros = "0.24"
+cargo-tarpaulin = "0.26.1"
 
 [dependencies.bevy]
 version = "0.9"

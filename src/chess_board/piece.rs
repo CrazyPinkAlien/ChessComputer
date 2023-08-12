@@ -15,6 +15,7 @@ dyn_clone::clone_trait_object!(Piece);
 pub(super) trait Piece:
     Send + Sync + DynClone + 'static + Component<Storage = TableStorage>
 {
+    // TODO some of these functions should return references
     fn get_type(&self) -> PieceType;
     fn get_color(&self) -> PieceColor;
     fn get_position(&self) -> BoardPosition;

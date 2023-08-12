@@ -14,6 +14,7 @@ static BOARD_SIZE: usize = 8;
 pub(super) struct ChessBoardPlugin;
 
 impl Plugin for ChessBoardPlugin {
+    #[cfg(not(tarpaulin_include))]
     fn build(&self, app: &mut App) {
         app.add_event::<ResetBoardEvent>()
             .add_event::<PieceMoveEvent>()
@@ -385,14 +386,92 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Invalid rank or file value: 8, 4")]
-    fn test_board_position_rank_to_large() {
+    fn test_board_position_new_rank_too_large() {
         BoardPosition::new(8, 4);
     }
 
     #[test]
     #[should_panic(expected = "Invalid rank or file value: 1, 10")]
-    fn test_board_position_file_to_large() {
+    fn test_board_position_new_file_too_large() {
         BoardPosition::new(1, 10);
+    }
+
+    #[test]
+    fn test_board_position_rank() {
+        let position = BoardPosition::new(1, 4);
+        assert_eq!(position.rank(), 1);
+    }
+
+    #[test]
+    fn test_board_position_file() {
+        let position = BoardPosition::new(1, 6);
+        assert_eq!(position.file(), 6);
+    }
+
+    #[test]
+    fn test_reset_board_event_fen() {
+        let fen = Fen::from_file("assets/fens/test_position.fen");
+        let event = ResetBoardEvent::new(fen.clone());
+        assert_eq!(*event.fen(), fen);
+    }
+
+    #[test]
+    fn test_piece_move_event_piece_move() {
+        let piece_move = Move::new(BoardPosition::new(0, 0), BoardPosition::new(2, 3));
+        let event = PieceMoveEvent::new(piece_move);
+        assert_eq!(*event.piece_move(), piece_move);
+    }
+
+    #[test]
+    fn test_piece_create_event_position() {
+        let position = BoardPosition::new(1, 3);
+        let event = PieceCreateEvent {
+            position,
+            piece_type: PieceType::Bishop,
+            color: PieceColor::Black,
+        };
+        assert_eq!(*event.position(), position);
+    }
+
+    #[test]
+    fn test_piece_create_event_piece_type() {
+        let piece_type = PieceType::Knight;
+        let event = PieceCreateEvent {
+            position: BoardPosition::new(1, 3),
+            piece_type,
+            color: PieceColor::Black,
+        };
+        assert_eq!(event.piece_type(), piece_type);
+    }
+
+    #[test]
+    fn test_piece_create_event_color() {
+        let color = PieceColor::White;
+        let event = PieceCreateEvent {
+            position: BoardPosition::new(1, 3),
+            piece_type: PieceType::Bishop,
+            color,
+        };
+        assert_eq!(event.color(), color);
+    }
+
+    #[test]
+    fn test_piece_destroy_event_position() {
+        let position = BoardPosition::new(4, 7);
+        let event = PieceDestroyEvent { position };
+        assert_eq!(*event.position(), position);
+    }
+
+    #[test]
+    fn test_chess_board_default() {
+        let default_board = ChessBoard::default();
+
+        assert_eq!(default_board.active_color(), PieceColor::White);
+        for rank in 0..BOARD_SIZE {
+            for file in 0..BOARD_SIZE {
+                assert!(default_board.board[rank][file].is_none());
+            }
+        }
     }
 
     #[test]
@@ -418,7 +497,7 @@ mod tests {
         app.add_event::<ResetBoardEvent>();
         app.add_system(reset_board_state);
 
-        // Set reset board event
+        // Trigger reset board event
         app.world
             .resource_mut::<Events<ResetBoardEvent>>()
             .send(ResetBoardEvent::new(fen));
@@ -426,6 +505,172 @@ mod tests {
         // Run systems
         app.update();
 
-        // TODO Confirm that the chessboard has been set up correctly
+        // Confirm that the chessboard has been set up correctly
+        let pieces = vec![
+            vec![
+                Some((PieceType::Rook, PieceColor::Black)),
+                Some((PieceType::King, PieceColor::Black)),
+                None,
+                Some((PieceType::Rook, PieceColor::Black)),
+                None,
+                Some((PieceType::Bishop, PieceColor::Black)),
+                Some((PieceType::Bishop, PieceColor::Black)),
+                None,
+            ],
+            vec![
+                Some((PieceType::Pawn, PieceColor::Black)),
+                Some((PieceType::Pawn, PieceColor::Black)),
+                Some((PieceType::Pawn, PieceColor::Black)),
+                None,
+                Some((PieceType::Pawn, PieceColor::Black)),
+                Some((PieceType::Pawn, PieceColor::Black)),
+                None,
+                Some((PieceType::Pawn, PieceColor::Black)),
+            ],
+            vec![
+                None,
+                None,
+                None,
+                Some((PieceType::Knight, PieceColor::Black)),
+                None,
+                None,
+                Some((PieceType::Knight, PieceColor::Black)),
+                None,
+            ],
+            vec![
+                None,
+                Some((PieceType::Queen, PieceColor::Black)),
+                None,
+                Some((PieceType::Pawn, PieceColor::Black)),
+                None,
+                None,
+                Some((PieceType::Pawn, PieceColor::Black)),
+                None,
+            ],
+            vec![
+                None,
+                None,
+                None,
+                None,
+                Some((PieceType::Pawn, PieceColor::White)),
+                None,
+                None,
+                None,
+            ],
+            vec![
+                None,
+                Some((PieceType::Knight, PieceColor::White)),
+                None,
+                None,
+                Some((PieceType::Queen, PieceColor::White)),
+                None,
+                Some((PieceType::Pawn, PieceColor::White)),
+                Some((PieceType::Pawn, PieceColor::White)),
+            ],
+            vec![
+                Some((PieceType::Pawn, PieceColor::White)),
+                Some((PieceType::Pawn, PieceColor::White)),
+                Some((PieceType::Pawn, PieceColor::White)),
+                Some((PieceType::Pawn, PieceColor::White)),
+                None,
+                Some((PieceType::Pawn, PieceColor::White)),
+                None,
+                None,
+            ],
+            vec![
+                Some((PieceType::Rook, PieceColor::White)),
+                Some((PieceType::King, PieceColor::White)),
+                None,
+                None,
+                Some((PieceType::Rook, PieceColor::White)),
+                Some((PieceType::Bishop, PieceColor::White)),
+                Some((PieceType::Bishop, PieceColor::White)),
+                Some((PieceType::Knight, PieceColor::White)),
+            ],
+        ];
+
+        // Check active color
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .active_color(),
+            PieceColor::Black
+        );
+
+        // Check pieces
+        let board = &app.world.get_resource::<ChessBoard>().unwrap().board;
+        for rank in 0..BOARD_SIZE {
+            for file in 0..BOARD_SIZE {
+                if pieces[rank][file].is_none() {
+                    assert!(board[rank][file].is_none());
+                } else {
+                    assert_eq!(
+                        board[rank][file].as_ref().unwrap().get_type(),
+                        pieces[rank][file].unwrap().0
+                    );
+                    assert_eq!(
+                        board[rank][file].as_ref().unwrap().get_color(),
+                        pieces[rank][file].unwrap().1
+                    );
+                    assert_eq!(
+                        board[rank][file].as_ref().unwrap().get_position(),
+                        BoardPosition::new(rank, file)
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[ignore]
+    #[should_panic(expected = "Unrecognised symbol in FEN: X")]
+    fn test_chess_board_from_fen_unrecognised_symbol() {
+        let fen = Fen::from_string("rk1x1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN b - - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+    }
+
+    #[test]
+    #[ignore]
+    #[should_panic(expected = "Unrecognised active color in FEN: l")]
+    fn test_chess_board_from_fen_unrecognised_active_color() {
+        let fen = Fen::from_string("rk1r1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN l - - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+    }
+
+    #[test]
+    fn test_chess_board_active_color() {
+        let mut chess_board = ChessBoard::empty_board();
+        chess_board.active_color = PieceColor::Black;
+
+        assert_eq!(chess_board.active_color(), PieceColor::Black);
     }
 }
