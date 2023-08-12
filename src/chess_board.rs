@@ -198,7 +198,7 @@ impl ChessBoard {
         self.active_color
     }
 
-    pub fn valid_move(&self, piece_move: Move) -> bool {
+    pub fn valid_move(&self, piece_move: Move, check_for_check: bool) -> bool {
         // Get piece
         if self.board[piece_move.from().rank][piece_move.from().file].is_none() {
             return false;
@@ -224,7 +224,8 @@ impl ChessBoard {
         // No piece in the way for sliding pieces
         && (!piece.is_sliding() || self.no_piece_along_line(&piece_move.from(), &piece_move.to()))
         // Finally, the move must not put the active color in check
-        && {
+        && check_for_check
+        &&{
                 let mut test_board = self.clone();
                 test_board.move_piece(piece_move);
                 let check_status = test_board.in_check();
@@ -232,7 +233,7 @@ impl ChessBoard {
             }
     }
 
-    fn get_valid_moves(&self) -> Vec<Move> {
+    fn get_valid_moves(&self, check_for_check: bool) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
@@ -240,7 +241,7 @@ impl ChessBoard {
                     let piece = &self.board[rank][file].as_ref().unwrap();
                     let piece_moves = piece.get_moves();
                     for piece_move in piece_moves {
-                        if self.valid_move(piece_move) {
+                        if self.valid_move(piece_move, check_for_check) {
                             moves.push(piece_move);
                         }
                     }
@@ -314,7 +315,7 @@ impl ChessBoard {
             }
         }
         // Get valid moves
-        let moves = self.get_valid_moves();
+        let moves = self.get_valid_moves(false);
         // Check if any valid moves can take the king
         for piece_move in moves {
             if piece_move.to() == white_king_location {
@@ -672,5 +673,60 @@ mod tests {
         chess_board.active_color = PieceColor::Black;
 
         assert_eq!(chess_board.active_color(), PieceColor::Black);
+    }
+
+    #[test]
+    fn test_chess_board_valid_move_true() {
+        let fen = Fen::from_string("rnb1kb1r/pp1ppp1p/5n2/qp4p1/4P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+        
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Create move
+        let piece_move = Move::new(BoardPosition::new(5, 2), BoardPosition::new(3, 1));
+
+        // Confirm that the move is valid
+        let board = &app.world.get_resource::<ChessBoard>().unwrap();
+        assert!(board.valid_move(piece_move, true));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_chess_board_valid_move_false() {
+        let fen = Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+        
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Create move
+        let piece_move = Move::new(BoardPosition::new(6, 3), BoardPosition::new(5, 3));
+
+        // Confirm that the move is valid
+        let board = &app.world.get_resource::<ChessBoard>().unwrap();
+        assert!(!board.valid_move(piece_move, true));
     }
 }
