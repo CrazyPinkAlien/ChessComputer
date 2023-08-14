@@ -17,4 +17,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: cargo install cargo-tarpaulin
-    - run: cargo tarpaulin --coveralls COVERALLS_REPO_TOKEN
+    - run: cargo tarpaulin --verbose --out Xml
+    - name: Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+        file: cobertura.xml
