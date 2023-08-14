@@ -798,10 +798,37 @@ mod tests {
         ];
 
         // Get valid moves
-        let board = &app.world.get_resource::<ChessBoard>().unwrap();
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
         let valid_moves = board.get_valid_moves(true);
 
         // Confirm that the results match
         assert_eq!(expected_valid_moves, valid_moves);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_chess_board_add_piece() {
+        let fen =
+        Fen::from_string("1b6/n3pb1Q/nrP2R2/3pr2B/1p2P3/2q2p1k/2PP4/7K w - - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Add another piece to the board
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        // board.add_piece(piece_color, piece_type, position, create_event)
+
     }
 }
