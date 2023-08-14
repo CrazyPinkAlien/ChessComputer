@@ -17,6 +17,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: cargo install cargo-tarpaulin
-    - run: cargo tarpaulin --verbose --out Json
-    - name: Update Coverage Badge
-      uses: we-cli/coverage-badge-action@main
+    - run: cargo tarpaulin --verbose --out Xml
+    - name: Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+        file: cobertura.xml
+
+
