@@ -20,5 +20,5 @@ jobs:
     - run: cargo tarpaulin --verbose --out Xml
     - uses: actions/upload-artifact@v3
       with:
-        name: coverage.json
-        path: ./cobertura.json
+        name: coverage.xml
+        path: ./cobertura.xml
