@@ -38,7 +38,7 @@ impl Piece for Knight {
         self.position = new_position;
     }
 
-    fn get_moves(&self) -> Vec<Move> {
+    fn get_moves(&self, _include_captures: bool) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..8 {
             for file in 0..8 {
@@ -65,7 +65,7 @@ impl Piece for Knight {
     }
 
     fn valid_move(&self, end_position: BoardPosition) -> bool {
-        let valid_moves = self.get_moves();
+        let valid_moves = self.get_moves(false);
         valid_moves.contains(&Move::new(self.get_position(), end_position))
     }
 

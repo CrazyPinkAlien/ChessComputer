@@ -21,7 +21,7 @@ pub(super) trait Piece:
     fn get_position(&self) -> BoardPosition;
     fn get_starting_position(&self) -> BoardPosition;
     fn set_position(&mut self, new_position: BoardPosition, moved: bool);
-    fn get_moves(&self) -> Vec<Move>;
+    fn get_moves(&self, include_captures: bool) -> Vec<Move>;
     fn valid_move(&self, end_position: BoardPosition) -> bool;
     fn valid_capture(&self, end_position: BoardPosition) -> bool;
     fn is_sliding(&self) -> bool;

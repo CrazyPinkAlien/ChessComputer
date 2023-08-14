@@ -239,7 +239,7 @@ impl ChessBoard {
             for file in 0..BOARD_SIZE {
                 if self.board[rank][file].is_some() {
                     let piece = &self.board[rank][file].as_ref().unwrap();
-                    let piece_moves = piece.get_moves();
+                    let piece_moves = piece.get_moves(true);
                     for piece_move in piece_moves {
                         if self.valid_move(piece_move, check_for_check) {
                             moves.push(piece_move);
@@ -627,7 +627,9 @@ mod tests {
     #[ignore]
     #[should_panic(expected = "Unrecognised symbol in FEN: X")]
     fn test_chess_board_from_fen_unrecognised_symbol() {
-        let fen = Fen::from_string("rk1x1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN b - - 0 1");
+        let fen = Fen::from_string(
+            "rk1x1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN b - - 0 1",
+        );
 
         // Setup app
         let mut app = App::new();
@@ -649,7 +651,9 @@ mod tests {
     #[ignore]
     #[should_panic(expected = "Unrecognised active color in FEN: l")]
     fn test_chess_board_from_fen_unrecognised_active_color() {
-        let fen = Fen::from_string("rk1r1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN l - - 0 1");
+        let fen = Fen::from_string(
+            "rk1r1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN l - - 0 1",
+        );
 
         // Setup app
         let mut app = App::new();
@@ -677,8 +681,9 @@ mod tests {
 
     #[test]
     fn test_chess_board_valid_move_true() {
-        let fen = Fen::from_string("rnb1kb1r/pp1ppp1p/5n2/qp4p1/4P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
-        
+        let fen =
+            Fen::from_string("rnb1kb1r/pp1ppp1p/5n2/qp4p1/4P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
         // Setup app
         let mut app = App::new();
         app.insert_resource(ChessBoard::empty_board());
@@ -705,8 +710,9 @@ mod tests {
     #[test]
     #[ignore]
     fn test_chess_board_valid_move_false() {
-        let fen = Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
-        
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
         // Setup app
         let mut app = App::new();
         app.insert_resource(ChessBoard::empty_board());
@@ -725,8 +731,77 @@ mod tests {
         // Create move
         let piece_move = Move::new(BoardPosition::new(6, 3), BoardPosition::new(5, 3));
 
-        // Confirm that the move is valid
+        // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
         assert!(!board.valid_move(piece_move, true));
+    }
+
+    #[test]
+    fn test_chess_board_valid_move_no_piece() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Create move
+        let piece_move = Move::new(BoardPosition::new(5, 3), BoardPosition::new(5, 3));
+
+        // Confirm that the move is not valid
+        let board = &app.world.get_resource::<ChessBoard>().unwrap();
+        assert!(!board.valid_move(piece_move, true));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_chess_board_get_valid_moves() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Expected valid moves
+        let expected_valid_moves = vec![
+            Move::new(BoardPosition::new(3, 1), BoardPosition::new(1, 0)),
+            Move::new(BoardPosition::new(3, 1), BoardPosition::new(1, 2)),
+            Move::new(BoardPosition::new(3, 1), BoardPosition::new(2, 3)),
+            Move::new(BoardPosition::new(3, 1), BoardPosition::new(4, 3)),
+            Move::new(BoardPosition::new(3, 1), BoardPosition::new(5, 0)),
+            Move::new(BoardPosition::new(3, 1), BoardPosition::new(5, 2)),
+            Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 3)),
+            Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 4)),
+        ];
+
+        // Get valid moves
+        let board = &app.world.get_resource::<ChessBoard>().unwrap();
+        let valid_moves = board.get_valid_moves(true);
+
+        // Confirm that the results match
+        assert_eq!(expected_valid_moves, valid_moves);
     }
 }
