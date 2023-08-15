@@ -1,0 +1,19 @@
+name: check formatting
+
+on: push
+
+jobs:
+  rustfmt:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run fmt
+      run: cargo fmt --all -- --check
+    
+  clippy:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+    
