@@ -76,17 +76,17 @@ impl Piece for Pawn {
             moves.push(Move::new(
                 self.position,
                 BoardPosition::new(
-                    (self.position.rank as i32 + 1 * self.move_direction()).clamp(0, 7) as usize,
+                    (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
                     (self.position.file as i32 + 1).clamp(0, 7) as usize,
-                ))
-            );
+                ),
+            ));
             moves.push(Move::new(
                 self.position,
                 BoardPosition::new(
-                    (self.position.rank as i32 + 1 * self.move_direction()).clamp(0, 7) as usize,
+                    (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
                     (self.position.file as i32 - 1).clamp(0, 7) as usize,
-                ))
-            );
+                ),
+            ));
         }
         moves
     }

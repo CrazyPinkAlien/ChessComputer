@@ -1,5 +1,5 @@
 use bevy::app::App;
-use bevy::prelude::{info, warn, Component, EventReader, EventWriter, Plugin, ResMut, Resource};
+use bevy::prelude::{info, Component, EventReader, EventWriter, Plugin, ResMut, Resource};
 use strum_macros::EnumIter;
 
 use crate::fen::Fen;
@@ -280,8 +280,7 @@ impl ChessBoard {
 
     fn move_piece(&mut self, piece_move: Move) {
         if self.board[piece_move.from().rank][piece_move.from().file].is_none() {
-            warn!("No piece moved.");
-            return;
+            panic!("No piece at start location.");
         }
         self.board[piece_move.from().rank][piece_move.from().file]
             .as_mut()
@@ -806,10 +805,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_chess_board_add_piece() {
+    fn test_chess_board_move_piece() {
         let fen =
-        Fen::from_string("1b6/n3pb1Q/nrP2R2/3pr2B/1p2P3/2q2p1k/2PP4/7K w - - 0 1");
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
 
         // Setup app
         let mut app = App::new();
@@ -826,9 +824,59 @@ mod tests {
         // Run systems
         app.update();
 
-        // Add another piece to the board
-        let board = app.world.get_resource::<ChessBoard>().unwrap();
-        // board.add_piece(piece_color, piece_type, position, create_event)
+        // Confirm that the piece starts in the expected location
+        let mut board = app.world.get_resource_mut::<ChessBoard>().unwrap();
+        assert!(board.board[2][5].is_some());
+        assert_eq!(
+            board.board[2][5].as_ref().unwrap().get_color(),
+            PieceColor::Black
+        );
+        assert_eq!(
+            board.board[2][5].as_ref().unwrap().get_type(),
+            PieceType::Knight
+        );
 
+        // Move the piece
+        let piece_move = Move::new(BoardPosition::new(2, 5), BoardPosition::new(4, 6));
+        board.move_piece(piece_move);
+
+        // Confirm that the piece has been moved
+        assert!(board.board[2][5].is_none());
+        assert!(board.board[4][6].is_some());
+        assert_eq!(
+            board.board[4][6].as_ref().unwrap().get_color(),
+            PieceColor::Black
+        );
+        assert_eq!(
+            board.board[4][6].as_ref().unwrap().get_type(),
+            PieceType::Knight
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "No piece at start location.")]
+    fn test_chess_board_move_piece_no_piece() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Attempt to move a non-existent piece
+        let mut board = app.world.get_resource_mut::<ChessBoard>().unwrap();
+        let piece_move = Move::new(BoardPosition::new(2, 1), BoardPosition::new(4, 6));
+        board.move_piece(piece_move);
     }
 }
