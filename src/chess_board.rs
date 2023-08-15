@@ -410,7 +410,9 @@ mod tests {
 
     #[test]
     fn test_reset_board_event_fen() {
-        let fen = Fen::from_file("assets/fens/test_position.fen");
+        let fen = Fen::from_string(
+            "rk1r1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN b - - 0 1",
+        );
         let event = ResetBoardEvent::new(fen.clone());
         assert_eq!(*event.fen(), fen);
     }
@@ -488,7 +490,9 @@ mod tests {
 
     #[test]
     fn test_chess_board_from_fen() {
-        let fen = Fen::from_file("assets/fens/test_position.fen");
+        let fen = Fen::from_string(
+            "rk1r1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN b - - 0 1",
+        );
 
         // Setup app
         let mut app = App::new();
