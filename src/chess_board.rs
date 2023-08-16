@@ -222,7 +222,7 @@ impl ChessBoard {
             None => piece.valid_move(piece_move.to())
         }
         // No piece in the way for sliding pieces
-        && (!piece.is_sliding() || self.no_piece_along_line(&piece_move.from(), &piece_move.to()))
+        && (!piece.is_sliding() || self.no_piece_between_squares(&piece_move.from(), &piece_move.to()))
         // Finally, the move must not put the active color in check
         && check_for_check
         &&{
@@ -326,15 +326,17 @@ impl ChessBoard {
         None
     }
 
-    fn no_piece_along_line(&self, start: &BoardPosition, end: &BoardPosition) -> bool {
+    fn no_piece_between_squares(&self, start: &BoardPosition, end: &BoardPosition) -> bool {
         let mut rank = start.rank() as i32;
         let mut file = start.file() as i32;
+        rank += (end.rank() as i32 - start.rank() as i32).signum();
+        file += (end.file() as i32 - start.file() as i32).signum();
         while rank as usize != end.rank() || file as usize != end.file() {
-            rank += (end.rank() as i32 - start.rank() as i32).signum();
-            file += (end.file() as i32 - start.file() as i32).signum();
             if self.board[rank as usize][file as usize].is_some() {
                 return false;
             }
+            rank += (end.rank() as i32 - start.rank() as i32).signum();
+            file += (end.file() as i32 - start.file() as i32).signum();
         }
         true
     }
@@ -796,8 +798,13 @@ mod tests {
             Move::new(BoardPosition::new(3, 1), BoardPosition::new(4, 3)),
             Move::new(BoardPosition::new(3, 1), BoardPosition::new(5, 0)),
             Move::new(BoardPosition::new(3, 1), BoardPosition::new(5, 2)),
-            Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 3)),
             Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 4)),
+            Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 3)),
+            Move::new(BoardPosition::new(5, 5), BoardPosition::new(3, 4)),
+            Move::new(BoardPosition::new(5, 5), BoardPosition::new(3, 6)),
+            Move::new(BoardPosition::new(5, 5), BoardPosition::new(4, 3)),
+            Move::new(BoardPosition::new(5, 5), BoardPosition::new(4, 7)),
+            Move::new(BoardPosition::new(5, 5), BoardPosition::new(7, 6)),
         ];
 
         // Get valid moves
@@ -1010,7 +1017,7 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.no_piece_along_line(&BoardPosition::new(2, 1), &BoardPosition::new(6, 5)));
+        assert!(board.no_piece_between_squares(&BoardPosition::new(2, 1), &BoardPosition::new(6, 5)));
     }
 
     #[test]
@@ -1035,6 +1042,6 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.no_piece_along_line(&BoardPosition::new(1, 6), &BoardPosition::new(4, 3)));
+        assert!(!board.no_piece_between_squares(&BoardPosition::new(1, 6), &BoardPosition::new(4, 3)));
     }
 }
