@@ -1,0 +1,36 @@
+name: CI
+
+on: push
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
+
+  test:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Tarpaulin
+      run: cargo install cargo-tarpaulin
+    - name: Run Tests
+      run: cargo tarpaulin --verbose --out Xml
+    - name: Upload to Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+        file: cobertura.xml
+
+  lint:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run fmt
+      run: cargo fmt --all -- --check
+    - name: Run Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
