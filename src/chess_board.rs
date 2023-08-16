@@ -330,8 +330,8 @@ impl ChessBoard {
         let mut rank = start.rank() as i32;
         let mut file = start.file() as i32;
         while rank as usize != end.rank() || file as usize != end.file() {
-            rank += end.rank() as i32 - start.rank() as i32;
-            file += end.file() as i32 - start.file() as i32;
+            rank += (end.rank() as i32 - start.rank() as i32).signum();
+            file += (end.file() as i32 - start.file() as i32).signum();
             if self.board[rank as usize][file as usize].is_some() {
                 return false;
             }
@@ -882,5 +882,159 @@ mod tests {
         let mut board = app.world.get_resource_mut::<ChessBoard>().unwrap();
         let piece_move = Move::new(BoardPosition::new(2, 1), BoardPosition::new(4, 6));
         board.move_piece(piece_move);
+    }
+
+    #[test]
+    fn test_chess_board_get_piece_color() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that get_piece_color returns the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert_eq!(board.get_piece_color(BoardPosition::new(1, 4)), Some(PieceColor::Black));
+        assert_eq!(board.get_piece_color(BoardPosition::new(2, 6)), None);
+        assert_eq!(board.get_piece_color(BoardPosition::new(7, 2)), Some(PieceColor::White));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_chess_board_in_check_white() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/8/qN1p2N1/4P3/2Pn4/PP1P2PP/1RBQK2R w Kkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that we get the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert_eq!(board.in_check(), Some(PieceColor::White));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_chess_board_in_check_black() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R w Kkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that we get the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert_eq!(board.in_check(), Some(PieceColor::Black));
+    }
+
+    #[test]
+    fn test_chess_board_in_check_none() {
+        let fen =
+            Fen::from_string("rnbk1b1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R b Kkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that we get the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert!(board.in_check().is_none());
+    }
+
+    #[test]
+    fn test_chess_board_no_piece_along_line_true() {
+        let fen =
+            Fen::from_string("rnbk1b1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R b Kkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that we get the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert!(board.no_piece_along_line(&BoardPosition::new(2, 1), &BoardPosition::new(6, 5)));
+    }
+
+    #[test]
+    fn test_chess_board_no_piece_along_line_false() {
+        let fen =
+            Fen::from_string("rnbk1b1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R b Kkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_system(reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that we get the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert!(!board.no_piece_along_line(&BoardPosition::new(1, 6), &BoardPosition::new(4, 3)));
     }
 }
