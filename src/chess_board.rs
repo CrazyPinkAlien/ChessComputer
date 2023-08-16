@@ -913,9 +913,15 @@ mod tests {
 
         // Confirm that get_piece_color returns the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert_eq!(board.get_piece_color(BoardPosition::new(1, 4)), Some(PieceColor::Black));
+        assert_eq!(
+            board.get_piece_color(BoardPosition::new(1, 4)),
+            Some(PieceColor::Black)
+        );
         assert_eq!(board.get_piece_color(BoardPosition::new(2, 6)), None);
-        assert_eq!(board.get_piece_color(BoardPosition::new(7, 2)), Some(PieceColor::White));
+        assert_eq!(
+            board.get_piece_color(BoardPosition::new(7, 2)),
+            Some(PieceColor::White)
+        );
     }
 
     #[test]
@@ -1017,7 +1023,9 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.no_piece_between_squares(&BoardPosition::new(2, 1), &BoardPosition::new(6, 5)));
+        assert!(
+            board.no_piece_between_squares(&BoardPosition::new(2, 1), &BoardPosition::new(6, 5))
+        );
     }
 
     #[test]
@@ -1042,6 +1050,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.no_piece_between_squares(&BoardPosition::new(1, 6), &BoardPosition::new(4, 3)));
+        assert!(
+            !board.no_piece_between_squares(&BoardPosition::new(1, 6), &BoardPosition::new(4, 3))
+        );
     }
 }
