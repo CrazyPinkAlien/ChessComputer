@@ -198,7 +198,7 @@ impl ChessBoard {
         self.active_color
     }
 
-    pub fn valid_move(&self, piece_move: Move, check_for_check: bool) -> bool {
+    pub fn valid_move(&self, piece_move: Move, active_color: PieceColor, check_for_check: bool) -> bool {
         // Get piece
         if self.board[piece_move.from().rank][piece_move.from().file].is_none() {
             return false;
@@ -208,7 +208,7 @@ impl ChessBoard {
             .unwrap();
 
         // Check that the piece is the active colour
-        (piece.get_color() == self.active_color)
+        (piece.get_color() == active_color)
         // Check whether or not there are any pieces there
         && match self.get_piece_color(piece_move.to()) {
             Some(color) => if color == piece.get_color() {
@@ -228,12 +228,11 @@ impl ChessBoard {
         &&{
                 let mut test_board = self.clone();
                 test_board.move_piece(piece_move);
-                let check_status = test_board.in_check();
-                check_status.is_none() || check_status.unwrap() != piece.get_color()
+                !test_board.in_check(active_color)
             }
     }
 
-    fn get_valid_moves(&self, check_for_check: bool) -> Vec<Move> {
+    fn get_valid_moves(&self, active_color: PieceColor, check_for_check: bool) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
@@ -241,7 +240,7 @@ impl ChessBoard {
                     let piece = &self.board[rank][file].as_ref().unwrap();
                     let piece_moves = piece.get_moves(true);
                     for piece_move in piece_moves {
-                        if self.valid_move(piece_move, check_for_check) {
+                        if self.valid_move(piece_move, active_color, check_for_check) {
                             moves.push(piece_move);
                         }
                     }
@@ -297,33 +296,34 @@ impl ChessBoard {
             .map(|piece| piece.get_color())
     }
 
-    fn in_check(&self) -> Option<PieceColor> {
-        // Get king locations
-        let mut white_king_location = BoardPosition::new(0, 0);
-        let mut black_king_location = BoardPosition::new(0, 0);
-        for rank in 0..BOARD_SIZE {
+    fn in_check(&self, color: PieceColor) -> bool {
+        // Get king location
+        let mut king_location = BoardPosition::new(0, 0);
+        'outer: for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 if self.board[rank][file].is_some()
                     && self.board[rank][file].as_ref().unwrap().get_type() == PieceType::King
+                    && self.board[rank][file].as_ref().unwrap().get_color() == color
                 {
-                    match self.board[rank][file].as_ref().unwrap().get_color() {
-                        PieceColor::White => white_king_location = BoardPosition::new(rank, file),
-                        PieceColor::Black => black_king_location = BoardPosition::new(rank, file),
-                    }
+                    king_location = BoardPosition::new(rank, file);
+                    break 'outer;
                 }
             }
         }
+        // Get the opponent color
+        let opponent_color = match self.active_color {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
         // Get valid moves
-        let moves = self.get_valid_moves(false);
+        let moves = self.get_valid_moves(opponent_color, false);
         // Check if any valid moves can take the king
         for piece_move in moves {
-            if piece_move.to() == white_king_location {
-                return Some(PieceColor::White);
-            } else if piece_move.to() == black_king_location {
-                return Some(PieceColor::Black);
+            if piece_move.to() == king_location {
+                return true;
             }
         }
-        None
+        false
     }
 
     fn no_piece_between_squares(&self, start: &BoardPosition, end: &BoardPosition) -> bool {
@@ -709,7 +709,7 @@ mod tests {
 
         // Confirm that the move is valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.valid_move(piece_move, true));
+        assert!(board.valid_move(piece_move, board.active_color(), true));
     }
 
     #[test]
@@ -738,7 +738,7 @@ mod tests {
 
         // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.valid_move(piece_move, true));
+        assert!(!board.valid_move(piece_move, board.active_color(), true));
     }
 
     #[test]
@@ -766,7 +766,7 @@ mod tests {
 
         // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.valid_move(piece_move, true));
+        assert!(!board.valid_move(piece_move, board.active_color(), true));
     }
 
     #[test]
@@ -826,7 +826,7 @@ mod tests {
 
         // Get valid moves
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        let valid_moves = board.get_valid_moves(true);
+        let valid_moves = board.get_valid_moves(board.active_color(), true);
 
         // Confirm that the results match
         assert_eq!(expected_valid_moves, valid_moves);
@@ -964,7 +964,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert_eq!(board.in_check(), Some(PieceColor::White));
+        assert!(board.in_check(PieceColor::White));
+        assert!(!board.in_check(PieceColor::Black));
     }
 
     #[test]
@@ -990,7 +991,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert_eq!(board.in_check(), Some(PieceColor::Black));
+        assert!(board.in_check(PieceColor::Black));
+        assert!(!board.in_check(PieceColor::White));
     }
 
     #[test]
@@ -1015,7 +1017,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.in_check().is_none());
+        assert!(!board.in_check(PieceColor::White));
+        assert!(!board.in_check(PieceColor::Black));
     }
 
     #[test]
