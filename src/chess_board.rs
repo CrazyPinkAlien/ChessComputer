@@ -1019,7 +1019,7 @@ mod tests {
     }
 
     #[test]
-    fn test_chess_board_no_piece_along_line_true() {
+    fn test_chess_board_no_piece_between_squares_true() {
         let fen =
             Fen::from_string("rnbk1b1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R b Kkq - 0 1");
 
@@ -1046,7 +1046,7 @@ mod tests {
     }
 
     #[test]
-    fn test_chess_board_no_piece_along_line_false() {
+    fn test_chess_board_no_piece_between_squares_false() {
         let fen =
             Fen::from_string("rnbk1b1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R b Kkq - 0 1");
 
