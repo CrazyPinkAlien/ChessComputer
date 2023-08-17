@@ -770,7 +770,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_chess_board_get_valid_moves() {
         let fen =
             Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
@@ -805,6 +804,24 @@ mod tests {
             Move::new(BoardPosition::new(5, 5), BoardPosition::new(4, 3)),
             Move::new(BoardPosition::new(5, 5), BoardPosition::new(4, 7)),
             Move::new(BoardPosition::new(5, 5), BoardPosition::new(7, 6)),
+            Move::new(BoardPosition::new(6, 0), BoardPosition::new(5, 0)),
+            Move::new(BoardPosition::new(6, 0), BoardPosition::new(4, 0)),
+            Move::new(BoardPosition::new(6, 1), BoardPosition::new(5, 1)),
+            Move::new(BoardPosition::new(6, 1), BoardPosition::new(4, 1)),
+            Move::new(BoardPosition::new(6, 2), BoardPosition::new(5, 2)),
+            Move::new(BoardPosition::new(6, 2), BoardPosition::new(4, 2)),
+            Move::new(BoardPosition::new(6, 3), BoardPosition::new(5, 3)),
+            Move::new(BoardPosition::new(6, 3), BoardPosition::new(4, 3)),
+            Move::new(BoardPosition::new(6, 6), BoardPosition::new(5, 6)),
+            Move::new(BoardPosition::new(6, 6), BoardPosition::new(4, 6)),
+            Move::new(BoardPosition::new(6, 7), BoardPosition::new(5, 7)),
+            Move::new(BoardPosition::new(6, 7), BoardPosition::new(4, 7)),
+            Move::new(BoardPosition::new(7, 0), BoardPosition::new(7, 1)),
+            Move::new(BoardPosition::new(7, 3), BoardPosition::new(6, 4)),
+            Move::new(BoardPosition::new(7, 4), BoardPosition::new(6, 4)),
+            Move::new(BoardPosition::new(7, 4), BoardPosition::new(7, 5)),
+            Move::new(BoardPosition::new(7, 7), BoardPosition::new(7, 5)),
+            Move::new(BoardPosition::new(7, 7), BoardPosition::new(7, 6)),
         ];
 
         // Get valid moves
