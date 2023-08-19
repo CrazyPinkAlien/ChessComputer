@@ -198,7 +198,12 @@ impl ChessBoard {
         self.active_color
     }
 
-    pub fn valid_move(&self, piece_move: Move, active_color: PieceColor, check_for_check: bool) -> bool {
+    pub fn valid_move(
+        &self,
+        piece_move: Move,
+        active_color: PieceColor,
+        check_for_check: bool,
+    ) -> bool {
         // Get piece
         if self.board[piece_move.from().rank][piece_move.from().file].is_none() {
             return false;
@@ -224,12 +229,12 @@ impl ChessBoard {
         // No piece in the way for sliding pieces
         && (!piece.is_sliding() || self.no_piece_between_squares(&piece_move.from(), &piece_move.to()))
         // Finally, the move must not put the active color in check
-        && check_for_check
-        &&{
+        && (!check_for_check
+        ||{
                 let mut test_board = self.clone();
                 test_board.move_piece(piece_move);
                 !test_board.in_check(active_color)
-            }
+            })
     }
 
     fn get_valid_moves(&self, active_color: PieceColor, check_for_check: bool) -> Vec<Move> {
@@ -311,7 +316,7 @@ impl ChessBoard {
             }
         }
         // Get the opponent color
-        let opponent_color = match self.active_color {
+        let opponent_color = match color {
             PieceColor::White => PieceColor::Black,
             PieceColor::Black => PieceColor::White,
         };
@@ -713,7 +718,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_chess_board_valid_move_false() {
         let fen =
             Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
@@ -810,8 +814,6 @@ mod tests {
             Move::new(BoardPosition::new(6, 1), BoardPosition::new(4, 1)),
             Move::new(BoardPosition::new(6, 2), BoardPosition::new(5, 2)),
             Move::new(BoardPosition::new(6, 2), BoardPosition::new(4, 2)),
-            Move::new(BoardPosition::new(6, 3), BoardPosition::new(5, 3)),
-            Move::new(BoardPosition::new(6, 3), BoardPosition::new(4, 3)),
             Move::new(BoardPosition::new(6, 6), BoardPosition::new(5, 6)),
             Move::new(BoardPosition::new(6, 6), BoardPosition::new(4, 6)),
             Move::new(BoardPosition::new(6, 7), BoardPosition::new(5, 7)),
@@ -942,7 +944,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_chess_board_in_check_white() {
         let fen =
             Fen::from_string("rnb1kb1r/pp2pp1p/8/qN1p2N1/4P3/2Pn4/PP1P2PP/1RBQK2R w Kkq - 0 1");
@@ -969,7 +970,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_chess_board_in_check_black() {
         let fen =
             Fen::from_string("rnb1kb1r/pp2p2p/5p2/qN1p2NQ/4P3/2Pn4/PP1P2PP/1RB2K1R w Kkq - 0 1");

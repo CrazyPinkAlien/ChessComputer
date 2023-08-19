@@ -137,7 +137,7 @@ pub(super) fn piece_click_handler(
                             let potential_move =
                                 Move::new(*piece_position, click.position.unwrap());
                             // When the button is released move the piece to that square if it is a valid move
-                            if board.valid_move(potential_move,board.active_color(), true) {
+                            if board.valid_move(potential_move, board.active_color(), true) {
                                 let event = PieceMoveEvent::new(potential_move);
                                 piece_move_event.send(event);
                             }
