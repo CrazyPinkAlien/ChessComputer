@@ -1173,7 +1173,29 @@ mod tests {
         assert_eq!(board[3][6].as_ref().unwrap().get_color(), PieceColor::Black);
         assert_eq!(board[3][6].as_ref().unwrap().get_type(), PieceType::Pawn);
         assert_eq!(board[3][6].as_ref().unwrap().get_position(), move_to);
-        assert!(board[2][5].is_none())
+        assert!(board[2][5].is_none());
+
+        // Trigger piece move event
+        let move_from = BoardPosition::new(3, 7);
+        let move_to = BoardPosition::new(3, 6);
+        app.world
+            .resource_mut::<Events<PieceMoveEvent>>()
+            .send(PieceMoveEvent::new(Move::new(move_from, move_to)));
+
+        // Run systems
+        app.update();
+
+        // Confirm that the piece has been correctly moved
+        let board = &app.world.get_resource::<ChessBoard>().unwrap().board;
+        assert_eq!(
+            app.world.get_resource::<ChessBoard>().unwrap().active_color,
+            PieceColor::Black
+        );
+        assert!(board[3][6].is_some());
+        assert_eq!(board[3][6].as_ref().unwrap().get_color(), PieceColor::White);
+        assert_eq!(board[3][6].as_ref().unwrap().get_type(), PieceType::Queen);
+        assert_eq!(board[3][6].as_ref().unwrap().get_position(), move_to);
+        assert!(board[3][7].is_none());
     }
 
     #[test]
