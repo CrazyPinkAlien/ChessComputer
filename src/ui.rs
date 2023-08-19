@@ -33,7 +33,6 @@ impl Plugin for UIPlugin {
             .add_system(button_system)
             .add_system(mouse_event_handler)
             .add_system(piece::piece_creator)
-            .add_system(piece::piece_destroyer)
             .add_system(piece::piece_click_handler)
             .add_system(piece::piece_move_audio)
             .add_system(piece::piece_dragger)

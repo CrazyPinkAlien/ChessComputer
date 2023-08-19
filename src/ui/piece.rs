@@ -10,8 +10,7 @@ use bevy_kira_audio::{Audio, AudioControl};
 
 use crate::chess_board::r#move::Move;
 use crate::chess_board::{
-    BoardPosition, ChessBoard, PieceColor, PieceCreateEvent, PieceDestroyEvent, PieceMoveEvent,
-    ResetBoardEvent,
+    BoardPosition, ChessBoard, PieceColor, PieceCreateEvent, PieceMoveEvent, ResetBoardEvent,
 };
 
 use super::board::BoardProperties;
@@ -101,20 +100,6 @@ pub(super) fn piece_creator(
     }
 }
 
-pub(super) fn piece_destroyer(
-    mut events: EventReader<PieceDestroyEvent>,
-    query: Query<(Entity, &BoardPosition), With<PieceTag>>,
-    mut commands: Commands,
-) {
-    for event in events.iter() {
-        for (entity, position) in query.iter() {
-            if event.position() == position {
-                commands.entity(entity).despawn();
-            }
-        }
-    }
-}
-
 pub(super) fn piece_click_handler(
     mut board_click_events: EventReader<BoardClickEvent>,
     mut query: Query<(&mut Dragging, &BoardPosition), With<PieceTag>>,
@@ -161,11 +146,19 @@ pub(super) fn piece_click_handler(
 
 pub(super) fn piece_mover(
     mut piece_move_events: EventReader<PieceMoveEvent>,
-    mut query: Query<(&mut BoardPosition, &mut Transform), With<PieceTag>>,
+    mut query: Query<(Entity, &mut BoardPosition, &mut Transform), With<PieceTag>>,
     board_properties: Res<BoardProperties>,
+    mut commands: Commands,
 ) {
     for event in piece_move_events.iter() {
-        for (mut position, mut transform) in query.iter_mut() {
+        // Remove any piece that is already there
+        for (entity, position, _transform) in query.iter() {
+            if event.piece_move().to() == *position {
+                commands.entity(entity).despawn();
+            }
+        }
+        // Move the piece
+        for (_entity, mut position, mut transform) in query.iter_mut() {
             if *position == event.piece_move().from() {
                 // Change its transform
                 let new_transform = board_properties.position_to_transform(event.piece_move().to());
