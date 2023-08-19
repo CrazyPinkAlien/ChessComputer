@@ -10,6 +10,7 @@ mod chess_board;
 mod fen;
 mod ui;
 
+#[cfg(not(tarpaulin_include))]
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
