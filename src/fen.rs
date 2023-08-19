@@ -34,3 +34,61 @@ impl Fen {
         &self.active_color
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fen_from_string() {
+        // Randomly generated fen
+        let fen_string = "5R2/2p4n/1Q6/6Pp/1R2P3/2P2b1K/P2krq2/2N5 w - - 0 1";
+
+        // Create a new fen from the above string
+        let fen = Fen::from_string(fen_string);
+
+        // Confirm that the fen has the correct properties
+        assert_eq!(
+            fen.piece_placement,
+            "5R2/2p4n/1Q6/6Pp/1R2P3/2P2b1K/P2krq2/2N5"
+        );
+        assert_eq!(fen.active_color, "w");
+    }
+
+    #[test]
+    fn test_fen_from_file() {
+        // Create a new fen from file
+        let fen = Fen::from_file("assets/fens/random.fen");
+
+        // Confirm that the fen has the correct properties
+        assert_eq!(fen.piece_placement, "7n/PkPK1p2/2R1B3/7P/pP6/6P1/pP2P3/7q");
+        assert_eq!(fen.active_color, "w");
+    }
+
+    #[test]
+    fn test_fen_piece_placement() {
+        // Randomly generated fen
+        let fen_string = "5Q2/4PK2/p1pP4/3p4/N1P1P2p/5bB1/3kp2P/8 w - - 0 1";
+
+        // Create a new fen from the above string
+        let fen = Fen::from_string(fen_string);
+
+        // Confirm that the function returns the correct result
+        assert_eq!(
+            fen.piece_placement(),
+            "5Q2/4PK2/p1pP4/3p4/N1P1P2p/5bB1/3kp2P/8"
+        );
+    }
+
+    #[test]
+    fn test_fen_active_color() {
+        // Randomly generated fen
+        let fen_string = "5Q2/4PK2/p1pP4/3p4/N1P1P2p/5bB1/3kp2P/8 b - - 0 1";
+
+        // Create a new fen from the above string
+        let fen = Fen::from_string(fen_string);
+
+        // Confirm that the function returns the correct result
+        assert_eq!(fen.active_color(), "b");
+    }
+}
