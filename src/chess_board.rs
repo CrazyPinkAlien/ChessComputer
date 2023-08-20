@@ -1,5 +1,7 @@
 use bevy::app::App;
-use bevy::prelude::{info, Component, EventReader, EventWriter, Plugin, ResMut, Resource};
+use bevy::prelude::{
+    Component, Event, EventReader, EventWriter, Plugin, ResMut, Resource, Startup, Update,
+};
 use strum_macros::EnumIter;
 
 use crate::fen::Fen;
@@ -20,9 +22,8 @@ impl Plugin for ChessBoardPlugin {
             .add_event::<PieceMoveEvent>()
             .add_event::<PieceCreateEvent>()
             .init_resource::<ChessBoard>()
-            .add_startup_system(setup)
-            .add_system(make_move)
-            .add_system(reset_board_state);
+            .add_systems(Startup, setup)
+            .add_systems(Update, (make_move, reset_board_state));
     }
 }
 
@@ -65,7 +66,7 @@ impl BoardPosition {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Event)]
 pub struct ResetBoardEvent {
     fen: Fen,
 }
@@ -80,6 +81,7 @@ impl ResetBoardEvent {
     }
 }
 
+#[derive(Event)]
 pub struct PieceMoveEvent {
     piece_move: Move,
 }
@@ -94,6 +96,7 @@ impl PieceMoveEvent {
     }
 }
 
+#[derive(Event)]
 pub struct PieceCreateEvent {
     position: BoardPosition,
     piece_type: PieceType,
@@ -342,7 +345,6 @@ fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<Che
             PieceColor::Black => PieceColor::White,
             PieceColor::White => PieceColor::Black,
         };
-        info!("Active color: {:?}", board.active_color);
     }
 }
 
@@ -470,7 +472,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<PieceCreateEvent>();
         app.add_event::<ResetBoardEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -610,7 +612,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -634,7 +636,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -663,7 +665,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -691,7 +693,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -719,7 +721,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -747,7 +749,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -808,7 +810,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -858,7 +860,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -884,7 +886,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -917,7 +919,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -943,7 +945,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -969,7 +971,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -995,7 +997,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -1022,7 +1024,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world
@@ -1045,7 +1047,7 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<PieceCreateEvent>();
-        app.add_startup_system(setup);
+        app.add_systems(Startup, setup);
 
         // Run systems
         app.update();
@@ -1142,8 +1144,7 @@ mod tests {
         app.add_event::<ResetBoardEvent>();
         app.add_event::<PieceCreateEvent>();
         app.add_event::<PieceMoveEvent>();
-        app.add_system(reset_board_state);
-        app.add_system(make_move);
+        app.add_systems(Update, (reset_board_state, make_move));
 
         // Trigger reset board event
         app.world
@@ -1209,7 +1210,7 @@ mod tests {
         app.insert_resource(ChessBoard::empty_board());
         app.add_event::<PieceCreateEvent>();
         app.add_event::<ResetBoardEvent>();
-        app.add_system(reset_board_state);
+        app.add_systems(Update, reset_board_state);
 
         // Trigger reset board event
         app.world

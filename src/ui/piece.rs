@@ -1,12 +1,12 @@
 use bevy::input::ButtonState;
+use bevy::prelude::AudioSinkPlayback;
 use bevy::prelude::{
-    default, AssetServer, Assets, Bundle, Camera, Changed, Commands, Component, Entity,
-    EventReader, EventWriter, FromWorld, GlobalTransform, Handle, MouseButton, Query, Res,
-    Resource, Transform, Vec2, Vec3, With,
+    default, AssetServer, Assets, AudioBundle, AudioSink, Bundle, Camera, Changed, Commands,
+    Component, Entity, EventReader, EventWriter, FromWorld, GlobalTransform, Handle, MouseButton,
+    PlaybackSettings, Query, Res, Resource, Transform, Vec2, Vec3, With,
 };
 use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
-use bevy::window::Windows;
-use bevy_kira_audio::{Audio, AudioControl};
+use bevy::window::Window;
 
 use crate::chess_board::r#move::Move;
 use crate::chess_board::{
@@ -19,7 +19,6 @@ use super::{BoardClickEvent, MainCamera};
 #[derive(Resource, Debug)]
 pub(super) struct PieceProperties {
     texture_atlas_handle: Handle<TextureAtlas>,
-    move_audio_volume: f64,
     sprite_scale: f32,
 }
 
@@ -42,7 +41,6 @@ impl FromWorld for PieceProperties {
 
         PieceProperties {
             texture_atlas_handle,
-            move_audio_volume: 0.75,
             sprite_scale: 0.25,
         }
     }
@@ -63,6 +61,9 @@ pub(super) struct StartingPosition(BoardPosition);
 #[derive(Component)]
 pub(super) struct PieceTag;
 
+#[derive(Component)]
+pub(super) struct PieceMoveAudio;
+
 #[derive(Bundle)]
 struct PieceBundle {
     dragging: Dragging,
@@ -71,6 +72,16 @@ struct PieceBundle {
     color: PieceColor,
     starting_position: StartingPosition,
     tag: PieceTag,
+}
+
+pub(super) fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
+    commands.spawn((
+        AudioBundle {
+            source: asset_server.load("sounds/chess_move_on_alabaster.wav"),
+            settings: PlaybackSettings::ONCE,
+        },
+        PieceMoveAudio,
+    ));
 }
 
 pub(super) fn piece_creator(
@@ -200,25 +211,23 @@ pub(super) fn piece_resetter(
 
 pub(super) fn piece_move_audio(
     mut events: EventReader<PieceMoveEvent>,
-    asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
-    piece_properties: Res<PieceProperties>,
+    audio_sink_query: Query<&AudioSink, With<PieceMoveAudio>>,
 ) {
     for _event in events.iter() {
-        audio
-            .play(asset_server.load("sounds/chess_move_on_alabaster.wav"))
-            .with_volume(piece_properties.move_audio_volume);
+        if let Ok(audio_sink) = audio_sink_query.get_single() {
+            audio_sink.play();
+        }
     }
 }
 
 pub(super) fn piece_dragger(
     mut query: Query<(&Dragging, &mut Transform, &PieceColor), With<PieceTag>>,
     board: Res<ChessBoard>,
-    windows: Res<Windows>,
+    windows: Query<&Window>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
 ) {
     // Get window and camera
-    let window = windows.get_primary().unwrap();
+    let window = windows.single();
     let (camera, camera_transform) = camera.single();
     // Check if the cursor is in the window
     if let Some(world_position) = window

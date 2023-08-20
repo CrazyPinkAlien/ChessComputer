@@ -22,8 +22,6 @@ pub(super) struct SquareBundle {
     _p: Square,
     position: BoardPosition,
     color: SquareColor,
-
-    #[bundle]
     sprite: SpriteBundle,
 }
 
