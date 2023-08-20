@@ -1,4 +1,3 @@
 target
 Cargo.lock
 tarpaulin-report.*
-Cargo.lock
