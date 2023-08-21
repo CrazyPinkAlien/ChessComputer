@@ -1,6 +1,6 @@
 use bevy::prelude::Component;
 
-use crate::chess_board::{r#move::Move, BoardPosition};
+use crate::chess_board::{r#move::Move, BoardPosition, BOARD_SIZE};
 
 use super::{Piece, PieceColor, PieceType};
 
@@ -50,22 +50,46 @@ impl Piece for Pawn {
         }
     }
 
-    fn get_moves(&self) -> Vec<Move> {
+    fn get_moves(&self, include_captures: bool) -> Vec<Move> {
         let mut moves = Vec::new();
-        // Can move forward 1
-        moves.push(Move::new(
-            self.get_position(),
-            BoardPosition::new(
-                (self.position.rank as i32 + self.move_direction()).clamp(0, 7) as usize,
-                self.position.file,
-            ),
-        ));
-        if !self.moved {
+        if (self.position.rank != 0) && (self.position.rank != (BOARD_SIZE - 1)) {
+            // Can move forward 1
+            moves.push(Move::new(
+                self.get_position(),
+                BoardPosition::new(
+                    (self.position.rank as i32 + self.move_direction()) as usize,
+                    self.position.file,
+                ),
+            ));
+            if include_captures {
+                if self.position.file != BOARD_SIZE - 1 {
+                    moves.push(Move::new(
+                        self.position,
+                        BoardPosition::new(
+                            (self.position.rank as i32 + self.move_direction()) as usize,
+                            (self.position.file as i32 + 1) as usize,
+                        ),
+                    ));
+                }
+                if self.position.file != 0 {
+                    moves.push(Move::new(
+                        self.position,
+                        BoardPosition::new(
+                            (self.position.rank as i32 + self.move_direction()) as usize,
+                            (self.position.file as i32 - 1) as usize,
+                        ),
+                    ));
+                }
+            }
+        }
+        if ((self.color == PieceColor::White) && (self.position.rank() == 6))
+            || ((self.color == PieceColor::Black) && (self.position.rank() == 1))
+        {
             // Can move forward 2
             moves.push(Move::new(
                 self.get_position(),
                 BoardPosition::new(
-                    (self.position.rank as i32 + 2 * self.move_direction()).clamp(0, 7) as usize,
+                    (self.position.rank as i32 + 2 * self.move_direction()) as usize,
                     self.position.file,
                 ),
             ));
@@ -82,7 +106,7 @@ impl Piece for Pawn {
     }
 
     fn valid_move(&self, end_position: BoardPosition) -> bool {
-        let valid_moves = self.get_moves();
+        let valid_moves = self.get_moves(false);
         valid_moves.contains(&Move::new(self.get_position(), end_position))
     }
 

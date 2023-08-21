@@ -1,17 +1,15 @@
 use bevy::input::ButtonState;
 use bevy::prelude::{
-    default, AssetServer, Assets, Bundle, Camera, Changed, Commands, Component, Entity,
-    EventReader, EventWriter, FromWorld, GlobalTransform, Handle, MouseButton, Query, Res,
-    Resource, Transform, Vec2, Vec3, With,
+    default, AssetServer, Assets, AudioBundle, Bundle, Camera, Changed, Commands, Component,
+    Entity, EventReader, EventWriter, FromWorld, GlobalTransform, Handle, MouseButton,
+    PlaybackSettings, Query, Res, Resource, Transform, Vec2, Vec3, With,
 };
 use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
-use bevy::window::Windows;
-use bevy_kira_audio::{Audio, AudioControl};
+use bevy::window::Window;
 
 use crate::chess_board::r#move::Move;
 use crate::chess_board::{
-    BoardPosition, ChessBoard, PieceColor, PieceCreateEvent, PieceDestroyEvent, PieceMoveEvent,
-    ResetBoardEvent,
+    BoardPosition, ChessBoard, PieceColor, PieceCreateEvent, PieceMoveEvent, ResetBoardEvent,
 };
 
 use super::board::BoardProperties;
@@ -20,7 +18,6 @@ use super::{BoardClickEvent, MainCamera};
 #[derive(Resource, Debug)]
 pub(super) struct PieceProperties {
     texture_atlas_handle: Handle<TextureAtlas>,
-    move_audio_volume: f64,
     sprite_scale: f32,
 }
 
@@ -43,7 +40,6 @@ impl FromWorld for PieceProperties {
 
         PieceProperties {
             texture_atlas_handle,
-            move_audio_volume: 0.75,
             sprite_scale: 0.25,
         }
     }
@@ -63,6 +59,9 @@ pub(super) struct StartingPosition(BoardPosition);
 
 #[derive(Component)]
 pub(super) struct PieceTag;
+
+#[derive(Component)]
+pub(super) struct PieceMoveAudio;
 
 #[derive(Bundle)]
 struct PieceBundle {
@@ -101,20 +100,6 @@ pub(super) fn piece_creator(
     }
 }
 
-pub(super) fn piece_destroyer(
-    mut events: EventReader<PieceDestroyEvent>,
-    query: Query<(Entity, &BoardPosition), With<PieceTag>>,
-    mut commands: Commands,
-) {
-    for event in events.iter() {
-        for (entity, position) in query.iter() {
-            if event.position() == position {
-                commands.entity(entity).despawn();
-            }
-        }
-    }
-}
-
 pub(super) fn piece_click_handler(
     mut board_click_events: EventReader<BoardClickEvent>,
     mut query: Query<(&mut Dragging, &BoardPosition), With<PieceTag>>,
@@ -137,7 +122,7 @@ pub(super) fn piece_click_handler(
                             let potential_move =
                                 Move::new(*piece_position, click.position.unwrap());
                             // When the button is released move the piece to that square if it is a valid move
-                            if board.valid_move(potential_move) {
+                            if board.valid_move(potential_move, board.active_color(), true) {
                                 let event = PieceMoveEvent::new(potential_move);
                                 piece_move_event.send(event);
                             }
@@ -161,11 +146,19 @@ pub(super) fn piece_click_handler(
 
 pub(super) fn piece_mover(
     mut piece_move_events: EventReader<PieceMoveEvent>,
-    mut query: Query<(&mut BoardPosition, &mut Transform), With<PieceTag>>,
+    mut query: Query<(Entity, &mut BoardPosition, &mut Transform), With<PieceTag>>,
     board_properties: Res<BoardProperties>,
+    mut commands: Commands,
 ) {
     for event in piece_move_events.iter() {
-        for (mut position, mut transform) in query.iter_mut() {
+        // Remove any piece that is already there
+        for (entity, position, _transform) in query.iter() {
+            if event.piece_move().to() == *position {
+                commands.entity(entity).despawn();
+            }
+        }
+        // Move the piece
+        for (_entity, mut position, mut transform) in query.iter_mut() {
             if *position == event.piece_move().from() {
                 // Change its transform
                 let new_transform = board_properties.position_to_transform(event.piece_move().to());
@@ -208,24 +201,24 @@ pub(super) fn piece_resetter(
 pub(super) fn piece_move_audio(
     mut events: EventReader<PieceMoveEvent>,
     asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
-    piece_properties: Res<PieceProperties>,
+    mut commands: Commands,
 ) {
     for _event in events.iter() {
-        audio
-            .play(asset_server.load("sounds/chess_move_on_alabaster.wav"))
-            .with_volume(piece_properties.move_audio_volume);
+        commands.spawn((AudioBundle {
+            source: asset_server.load("sounds/chess_move_on_alabaster.wav"),
+            settings: PlaybackSettings::DESPAWN,
+        },));
     }
 }
 
 pub(super) fn piece_dragger(
     mut query: Query<(&Dragging, &mut Transform, &PieceColor), With<PieceTag>>,
     board: Res<ChessBoard>,
-    windows: Res<Windows>,
+    windows: Query<&Window>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
 ) {
     // Get window and camera
-    let window = windows.get_primary().unwrap();
+    let window = windows.single();
     let (camera, camera_transform) = camera.single();
     // Check if the cursor is in the window
     if let Some(world_position) = window
