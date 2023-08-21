@@ -28,6 +28,14 @@ jobs:
       - name: Build docs
         run: cargo doc --all-features --no-deps
 
+      #  This adds the following:
+      #   - A robots.txt file to forbid any crawling of the site (to defer to the docs.rs site on search engines).
+      #   - A .nojekyll file to disable Jekyll GitHub Pages builds.
+      - name: Finalize documentation
+        run: |
+          echo "User-Agent: *\nDisallow: /" > target/doc/robots.txt
+          touch target/doc/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
