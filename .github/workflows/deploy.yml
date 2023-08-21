@@ -1,4 +1,4 @@
-name: Deploy to Github Pages
+name: Deploy
 
 on:
   push:
@@ -10,7 +10,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTDOCFLAGS: --html-in-header header.html
 
 jobs:
   build-and-deploy-docs:
