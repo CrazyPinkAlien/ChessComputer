@@ -1,8 +1,7 @@
 use bevy::input::ButtonState;
-use bevy::prelude::AudioSinkPlayback;
 use bevy::prelude::{
-    default, AssetServer, Assets, AudioBundle, AudioSink, Bundle, Camera, Changed, Commands,
-    Component, Entity, EventReader, EventWriter, FromWorld, GlobalTransform, Handle, MouseButton,
+    default, AssetServer, Assets, AudioBundle, Bundle, Camera, Changed, Commands, Component,
+    Entity, EventReader, EventWriter, FromWorld, GlobalTransform, Handle, MouseButton,
     PlaybackSettings, Query, Res, Resource, Transform, Vec2, Vec3, With,
 };
 use bevy::sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite};
@@ -72,16 +71,6 @@ struct PieceBundle {
     color: PieceColor,
     starting_position: StartingPosition,
     tag: PieceTag,
-}
-
-pub(super) fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
-    commands.spawn((
-        AudioBundle {
-            source: asset_server.load("sounds/chess_move_on_alabaster.wav"),
-            settings: PlaybackSettings::ONCE,
-        },
-        PieceMoveAudio,
-    ));
 }
 
 pub(super) fn piece_creator(
@@ -211,12 +200,14 @@ pub(super) fn piece_resetter(
 
 pub(super) fn piece_move_audio(
     mut events: EventReader<PieceMoveEvent>,
-    audio_sink_query: Query<&AudioSink, With<PieceMoveAudio>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
 ) {
     for _event in events.iter() {
-        if let Ok(audio_sink) = audio_sink_query.get_single() {
-            audio_sink.play();
-        }
+        commands.spawn((AudioBundle {
+            source: asset_server.load("sounds/chess_move_on_alabaster.wav"),
+            settings: PlaybackSettings::DESPAWN,
+        },));
     }
 }
 

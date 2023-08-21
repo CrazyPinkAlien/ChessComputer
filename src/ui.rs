@@ -27,7 +27,7 @@ impl Plugin for UIPlugin {
         app.init_resource::<piece::PieceProperties>()
             .init_resource::<board::BoardProperties>()
             .add_event::<BoardClickEvent>()
-            .add_systems(Startup, (setup, board::setup, piece::setup))
+            .add_systems(Startup, (setup, board::setup))
             .add_systems(
                 Update,
                 (
