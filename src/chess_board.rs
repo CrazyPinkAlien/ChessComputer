@@ -11,7 +11,7 @@ use self::r#move::Move;
 pub(super) mod r#move;
 mod piece;
 
-static BOARD_SIZE: usize = 8;
+const BOARD_SIZE: usize = 8;
 
 pub(super) struct ChessBoardPlugin;
 
@@ -330,7 +330,7 @@ impl ChessBoard {
 
 fn setup(mut create_event: EventWriter<PieceCreateEvent>, mut board: ResMut<ChessBoard>) {
     *board = ChessBoard::from_fen(
-        &Fen::from_file("assets/fens/starting_position.fen"),
+        &Fen::default(),
         &mut create_event,
     );
 }

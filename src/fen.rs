@@ -1,10 +1,10 @@
-use std::fs::read_to_string;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Fen {
     piece_placement: String,
     active_color: String,
 }
+
+const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 impl Fen {
     pub fn from_string(fen_string: &str) -> Self {
@@ -21,17 +21,18 @@ impl Fen {
         }
     }
 
-    pub fn from_file(filename: &str) -> Self {
-        let fen_string = read_to_string(filename).expect("Starting FEN not found.");
-        Fen::from_string(&fen_string)
-    }
-
     pub fn piece_placement(&self) -> &String {
         &self.piece_placement
     }
 
     pub fn active_color(&self) -> &String {
         &self.active_color
+    }
+}
+
+impl Default for Fen {
+    fn default() -> Self {
+        Fen::from_string(STARTING_FEN)
     }
 }
 
@@ -52,16 +53,6 @@ mod tests {
             fen.piece_placement,
             "5R2/2p4n/1Q6/6Pp/1R2P3/2P2b1K/P2krq2/2N5"
         );
-        assert_eq!(fen.active_color, "w");
-    }
-
-    #[test]
-    fn test_fen_from_file() {
-        // Create a new fen from file
-        let fen = Fen::from_file("assets/fens/random.fen");
-
-        // Confirm that the fen has the correct properties
-        assert_eq!(fen.piece_placement, "7n/PkPK1p2/2R1B3/7P/pP6/6P1/pP2P3/7q");
         assert_eq!(fen.active_color, "w");
     }
 

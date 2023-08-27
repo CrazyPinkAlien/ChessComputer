@@ -136,9 +136,7 @@ fn button_system(
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                setup_event.send(ResetBoardEvent::new(Fen::from_file(
-                    "assets/fens/starting_position.fen",
-                )));
+                setup_event.send(ResetBoardEvent::new(Fen::default()));
                 *color = PRESSED_BUTTON.into();
             }
             Interaction::Hovered => {
