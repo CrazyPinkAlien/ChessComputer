@@ -1,9 +1,9 @@
 use bevy::app::{App, Plugin};
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{
-    default, AssetServer, BuildChildren, Button, ButtonBundle, Camera, Camera2dBundle, Changed,
-    Color, Commands, Component, Event, EventReader, EventWriter, GlobalTransform, NodeBundle,
-    Query, Res, Startup, TextBundle, Update, With,
+    default, AssetServer, BuildChildren, ButtonBundle, Camera, Camera2dBundle, Changed, Color,
+    Commands, Component, Event, EventReader, EventWriter, GlobalTransform, NodeBundle, Query, Res,
+    Startup, TextBundle, Update, With,
 };
 use bevy::text::TextStyle;
 use bevy::ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val};
@@ -31,7 +31,7 @@ impl Plugin for UIPlugin {
             .add_systems(
                 Update,
                 (
-                    button_system,
+                    reset_board_button,
                     mouse_event_handler,
                     piece::piece_creator,
                     piece::piece_click_handler,
@@ -48,6 +48,9 @@ impl Plugin for UIPlugin {
 
 #[derive(Component)]
 struct MainCamera;
+
+#[derive(Component)]
+struct ResetBoardButton;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((Camera2dBundle::default(), MainCamera));
@@ -68,17 +71,20 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .with_children(|parent| {
             parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        // horizontally center child text
-                        justify_content: JustifyContent::Center,
-                        // vertically center child text
-                        align_items: AlignItems::Center,
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            // horizontally center child text
+                            justify_content: JustifyContent::Center,
+                            // vertically center child text
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        background_color: NORMAL_BUTTON.into(),
                         ..default()
                     },
-                    background_color: NORMAL_BUTTON.into(),
-                    ..default()
-                })
+                    ResetBoardButton,
+                ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
                         "Reset Board",
@@ -126,10 +132,10 @@ fn mouse_event_handler(
     }
 }
 
-fn button_system(
+fn reset_board_button(
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<Button>),
+        (Changed<Interaction>, With<ResetBoardButton>),
     >,
     mut setup_event: EventWriter<ResetBoardEvent>,
 ) {
@@ -153,7 +159,7 @@ fn button_system(
 mod tests {
     use bevy::{
         input::InputPlugin,
-        prelude::{AssetPlugin, Entity, Events, Vec2},
+        prelude::{AssetPlugin, Button, Entity, Events, Vec2},
         window::{Window, WindowPlugin},
         MinimalPlugins,
     };
