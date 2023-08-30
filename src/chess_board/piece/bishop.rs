@@ -1,6 +1,6 @@
 use bevy::prelude::Component;
 
-use crate::chess_board::{r#move::Move, BoardPosition};
+use crate::chess_board::BoardPosition;
 
 use super::{Piece, PieceColor, PieceType};
 
@@ -38,7 +38,7 @@ impl Piece for Bishop {
         self.position = new_position;
     }
 
-    fn get_moves(&self, _include_captures: bool) -> Vec<Move> {
+    fn get_moves(&self, _include_captures: bool) -> Vec<BoardPosition> {
         let mut moves = Vec::new();
         for rank in 0..8 {
             for file in 0..8 {
@@ -46,7 +46,7 @@ impl Piece for Bishop {
                 let file_diff = file as i32 - self.position.file as i32;
                 if (rank_diff == file_diff || rank_diff == -file_diff) && rank != self.position.rank
                 {
-                    moves.push(Move::new(self.get_position(), BoardPosition { rank, file }));
+                    moves.push(BoardPosition::new(rank, file));
                 }
             }
         }
@@ -63,7 +63,7 @@ impl Piece for Bishop {
 
     fn valid_move(&self, end_position: crate::chess_board::BoardPosition) -> bool {
         let valid_moves = self.get_moves(false);
-        valid_moves.contains(&Move::new(self.get_position(), end_position))
+        valid_moves.contains(&end_position)
     }
 
     fn valid_capture(&self, end_position: crate::chess_board::BoardPosition) -> bool {

@@ -84,22 +84,23 @@ pub(super) fn highlight_valid_squares(
     board: Res<ChessBoard>,
     properties: Res<BoardProperties>,
 ) {
+    let valid_moves = board.get_valid_moves(board.active_color(), true);
     for (piece_position, dragging) in piece_query.iter() {
         for (mut sprite, position, color) in square_query.iter_mut() {
             // Highlight the square if it's valid
-            let potential_move = Move::new(*piece_position, *position);
-            let sprite_color =
-                if dragging.get() && board.valid_move(potential_move, board.active_color(), true) {
-                    match color.get() {
-                        PieceColor::White => properties.highlight_color_white,
-                        PieceColor::Black => properties.highlight_color_black,
-                    }
-                } else {
-                    match color.get() {
-                        PieceColor::White => properties.color_white,
-                        PieceColor::Black => properties.color_black,
-                    }
-                };
+            let sprite_color = if dragging.get()
+                && valid_moves.contains(&Move::new_from_board(*piece_position, *position, &board))
+            {
+                match color.get() {
+                    PieceColor::White => properties.highlight_color_white,
+                    PieceColor::Black => properties.highlight_color_black,
+                }
+            } else {
+                match color.get() {
+                    PieceColor::White => properties.color_white,
+                    PieceColor::Black => properties.color_black,
+                }
+            };
             sprite.color = sprite_color;
         }
     }
