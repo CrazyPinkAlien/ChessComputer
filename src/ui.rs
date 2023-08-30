@@ -5,13 +5,13 @@ use bevy::prelude::{
     Commands, Component, Event, EventReader, EventWriter, GlobalTransform, NodeBundle, Query, Res,
     Startup, TextBundle, Update, With,
 };
-use bevy::text::{Text, TextSection, TextStyle};
+use bevy::text::{Text, TextStyle};
 use bevy::ui::{
     AlignItems, BackgroundColor, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val,
 };
 use bevy::window::Window;
 
-use crate::chess_board::{BoardPosition, PieceMoveEvent, ResetBoardEvent};
+use crate::chess_board::{BoardPosition, ChessBoard, PieceColor, PieceMoveEvent, ResetBoardEvent};
 use crate::fen::Fen;
 
 mod board;
@@ -28,6 +28,8 @@ pub(super) struct UIPlugin;
 impl Plugin for UIPlugin {
     #[cfg(not(tarpaulin_include))]
     fn build(&self, app: &mut App) {
+        use bevy::prelude::PostUpdate;
+
         app.init_resource::<piece::PieceProperties>()
             .init_resource::<board::BoardProperties>()
             .add_event::<BoardClickEvent>()
@@ -37,7 +39,7 @@ impl Plugin for UIPlugin {
                 (
                     reset_board_button,
                     mouse_event_handler,
-                    past_moves_text,
+                    reset_past_moves_text,
                     piece::piece_creator,
                     piece::piece_click_handler,
                     piece::piece_move_audio,
@@ -47,7 +49,8 @@ impl Plugin for UIPlugin {
                     piece::piece_resetter,
                     board::highlight_valid_squares,
                 ),
-            );
+            )
+            .add_systems(PostUpdate, past_moves_text);
     }
 }
 
@@ -220,11 +223,32 @@ fn reset_board_button(
 fn past_moves_text(
     mut events: EventReader<PieceMoveEvent>,
     mut query: Query<&mut Text, With<PastMovesText>>,
+    board: Res<ChessBoard>,
 ) {
     for event in events.iter() {
         let mut text = query.single_mut();
-        text.sections[0].value.push_str("\n");
+
+        // Add the move number if the active color is white
+        if board.active_color() == PieceColor::White {
+            text.sections[0].value += &board.move_number().to_string();
+            text.sections[0].value.push_str(". ");
+        } else {
+            text.sections[0].value.push_str("    ");
+        }
+        // Add the move in algebraic notation
         text.sections[0].value += &event.piece_move().as_algebraic();
+
+        text.sections[0].value.push_str("\n");
+    }
+}
+
+fn reset_past_moves_text(
+    mut events: EventReader<ResetBoardEvent>,
+    mut query: Query<&mut Text, With<PastMovesText>>,
+) {
+    for _event in events.iter() {
+        let mut text = query.single_mut();
+        text.sections[0].value = "".to_owned();
     }
 }
 

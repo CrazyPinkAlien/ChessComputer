@@ -1,6 +1,7 @@
 use bevy::app::App;
 use bevy::prelude::{
-    Component, Event, EventReader, EventWriter, Plugin, ResMut, Resource, Startup, Update,
+    Component, Event, EventReader, EventWriter, Plugin, PreUpdate, Res, ResMut, Resource, Startup,
+    Update,
 };
 use strum_macros::EnumIter;
 
@@ -23,7 +24,8 @@ impl Plugin for ChessBoardPlugin {
             .add_event::<PieceCreateEvent>()
             .init_resource::<ChessBoard>()
             .add_systems(Startup, setup)
-            .add_systems(Update, (make_move, reset_board_state));
+            .add_systems(PreUpdate, make_move)
+            .add_systems(Update, (reset_board_state));
     }
 }
 
@@ -122,6 +124,7 @@ pub struct ChessBoard {
     board: [[Option<Box<dyn piece::Piece>>; 8]; 8],
     active_color: PieceColor,
     past_moves: Vec<Move>,
+    move_number: i32,
 }
 
 impl Default for ChessBoard {
@@ -137,6 +140,7 @@ impl ChessBoard {
             board,
             active_color: PieceColor::White,
             past_moves: Vec::new(),
+            move_number: 0,
         }
     }
 
@@ -185,11 +189,17 @@ impl ChessBoard {
             "b" => PieceColor::Black,
             _ => panic!("Unrecognised active color in FEN: {}", fen.active_color()),
         };
+        // Set move number
+        board_state.move_number = fen.move_number();
         board_state
     }
 
     pub fn active_color(&self) -> PieceColor {
         self.active_color
+    }
+
+    pub fn move_number(&self) -> i32 {
+        self.move_number
     }
 
     pub fn valid_move(
@@ -360,6 +370,11 @@ fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<Che
 
         // Make a record of the move
         board.past_moves.push(event.piece_move);
+
+        // Increment the move number if it is now white's turn
+        if board.active_color == PieceColor::White {
+            board.move_number += 1;
+        }
     }
 }
 

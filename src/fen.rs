@@ -2,6 +2,7 @@
 pub struct Fen {
     piece_placement: String,
     active_color: String,
+    move_number: i32,
 }
 
 const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -18,6 +19,7 @@ impl Fen {
         Fen {
             piece_placement: piece_placement.to_string(),
             active_color: active_color.to_string(),
+            move_number: split_fen[5].parse::<i32>().unwrap(),
         }
     }
 
@@ -27,6 +29,10 @@ impl Fen {
 
     pub fn active_color(&self) -> &String {
         &self.active_color
+    }
+
+    pub fn move_number(&self) -> i32 {
+        self.move_number
     }
 }
 
