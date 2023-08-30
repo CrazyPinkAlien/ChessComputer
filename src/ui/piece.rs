@@ -176,27 +176,13 @@ pub(super) fn piece_mover(
 
 pub(super) fn piece_resetter(
     mut board_reset_events: EventReader<ResetBoardEvent>,
-    mut query: Query<
-        (
-            &StartingPosition,
-            &mut Transform,
-            &mut Dragging,
-            &mut BoardPosition,
-        ),
-        With<PieceTag>,
-    >,
-    board_properties: Res<BoardProperties>,
+    mut query: Query<Entity, With<PieceTag>>,
+    mut commands: Commands,
 ) {
     for _event in board_reset_events.iter() {
-        for (starting_position, mut transform, mut dragging, mut position) in query.iter_mut() {
-            // Change its transform
-            let new_transform = board_properties.position_to_transform(starting_position.0);
-            *transform =
-                transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
-            // Change its position
-            *position = starting_position.0;
-            // Disable dragging
-            dragging.0 = false;
+        for entity in query.iter_mut() {
+            // Despawn the piece
+            commands.entity(entity).despawn();
         }
     }
 }
