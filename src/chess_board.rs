@@ -33,7 +33,7 @@ pub enum PieceColor {
     Black,
 }
 
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq)]
 pub enum PieceType {
     King,
     Queen,
@@ -121,6 +121,7 @@ impl PieceCreateEvent {
 pub struct ChessBoard {
     board: [[Option<Box<dyn piece::Piece>>; 8]; 8],
     active_color: PieceColor,
+    past_moves: Vec<Move>,
 }
 
 impl Default for ChessBoard {
@@ -135,6 +136,7 @@ impl ChessBoard {
         ChessBoard {
             board,
             active_color: PieceColor::White,
+            past_moves: Vec::new(),
         }
     }
 
@@ -229,15 +231,22 @@ impl ChessBoard {
             })
     }
 
-    fn get_valid_moves(&self, active_color: PieceColor, check_for_check: bool) -> Vec<Move> {
+    pub fn get_valid_moves(&self, active_color: PieceColor, check_for_check: bool) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 if self.board[rank][file].is_some() {
                     let piece = &self.board[rank][file].as_ref().unwrap();
                     let piece_moves = piece.get_moves(true);
-                    for piece_move in piece_moves {
-                        if self.valid_move(piece_move, active_color, check_for_check) {
+                    for move_to in piece_moves {
+                        let mut piece_move = Move::new(
+                            BoardPosition::new(rank, file),
+                            move_to,
+                            self.get_piece_type(&BoardPosition::new(rank, file))
+                                .unwrap(),
+                            self.get_piece_type(&move_to).is_some(),
+                        );
+                        if self.valid_move(&mut piece_move, active_color, check_for_check) {
                             moves.push(piece_move);
                         }
                     }
@@ -274,6 +283,12 @@ impl ChessBoard {
         self.board[piece_move.to().rank][piece_move.to().file] =
             self.board[piece_move.from().rank][piece_move.from().file].clone();
         self.board[piece_move.from().rank][piece_move.from().file] = None;
+    }
+
+    pub fn get_piece_type(&self, position: &BoardPosition) -> Option<PieceType> {
+        self.board[position.rank][position.file]
+            .as_ref()
+            .map(|piece| piece.get_type())
     }
 
     fn get_piece_color(&self, position: BoardPosition) -> Option<PieceColor> {
@@ -329,10 +344,7 @@ impl ChessBoard {
 }
 
 fn setup(mut create_event: EventWriter<PieceCreateEvent>, mut board: ResMut<ChessBoard>) {
-    *board = ChessBoard::from_fen(
-        &Fen::default(),
-        &mut create_event,
-    );
+    *board = ChessBoard::from_fen(&Fen::default(), &mut create_event);
 }
 
 fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<ChessBoard>) {
@@ -345,6 +357,9 @@ fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<Che
             PieceColor::Black => PieceColor::White,
             PieceColor::White => PieceColor::Black,
         };
+
+        // Make a record of the move
+        board.past_moves.push(event.piece_move);
     }
 }
 

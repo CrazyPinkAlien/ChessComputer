@@ -5,11 +5,13 @@ use bevy::prelude::{
     Commands, Component, Event, EventReader, EventWriter, GlobalTransform, NodeBundle, Query, Res,
     Startup, TextBundle, Update, With,
 };
-use bevy::text::TextStyle;
-use bevy::ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val};
+use bevy::text::{Text, TextSection, TextStyle};
+use bevy::ui::{
+    AlignItems, BackgroundColor, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val,
+};
 use bevy::window::Window;
 
-use crate::chess_board::{BoardPosition, ResetBoardEvent};
+use crate::chess_board::{BoardPosition, PieceMoveEvent, ResetBoardEvent};
 use crate::fen::Fen;
 
 mod board;
@@ -18,6 +20,8 @@ mod piece;
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
+const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const TEXT_SIZE: f32 = 40.0;
 
 pub(super) struct UIPlugin;
 
@@ -33,6 +37,7 @@ impl Plugin for UIPlugin {
                 (
                     reset_board_button,
                     mouse_event_handler,
+                    past_moves_text,
                     piece::piece_creator,
                     piece::piece_click_handler,
                     piece::piece_move_audio,
@@ -52,47 +57,104 @@ struct MainCamera;
 #[derive(Component)]
 struct ResetBoardButton;
 
+#[derive(Component)]
+struct PastMovesText;
+
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     commands.spawn((Camera2dBundle::default(), MainCamera));
+
     commands
+        // Top level flex box
         .spawn(NodeBundle {
             style: Style {
+                width: Val::Percent(100.0),
                 align_items: AlignItems::FlexStart,
-                justify_content: JustifyContent::FlexStart,
+                justify_content: JustifyContent::SpaceBetween,
                 margin: UiRect {
-                    left: Val::Percent(1.),
-                    right: Val::Percent(1.),
-                    top: Val::Percent(1.),
-                    bottom: Val::Percent(1.),
+                    left: Val::Percent(2.),
+                    right: Val::Percent(2.),
+                    top: Val::Percent(2.),
+                    bottom: Val::Percent(2.),
                 },
                 ..default()
             },
-            ..default()
+            ..Default::default()
         })
         .with_children(|parent| {
+            // Left Side
             parent
-                .spawn((
-                    ButtonBundle {
-                        style: Style {
-                            // horizontally center child text
-                            justify_content: JustifyContent::Center,
-                            // vertically center child text
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        background_color: NORMAL_BUTTON.into(),
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::FlexStart,
+                        justify_content: JustifyContent::FlexStart,
                         ..default()
                     },
-                    ResetBoardButton,
-                ))
+                    ..Default::default()
+                })
                 .with_children(|parent| {
+                    // Reset board button
+                    parent
+                        .spawn((
+                            ButtonBundle {
+                                style: Style {
+                                    // horizontally center child text
+                                    justify_content: JustifyContent::Center,
+                                    // vertically center child text
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                background_color: NORMAL_BUTTON.into(),
+                                ..default()
+                            },
+                            ResetBoardButton,
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn(TextBundle::from_section(
+                                "Reset Board",
+                                TextStyle {
+                                    font: font.clone(),
+                                    font_size: TEXT_SIZE,
+                                    color: TEXT_COLOR,
+                                },
+                            ));
+                        });
+                });
+
+            // Right Side
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::FlexStart,
+                        justify_content: JustifyContent::FlexEnd,
+                        ..default()
+                    },
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    // Past moves title
                     parent.spawn(TextBundle::from_section(
-                        "Reset Board",
+                        "Past Moves",
                         TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
+                            font: font.clone(),
+                            font_size: TEXT_SIZE,
+                            color: TEXT_COLOR,
                         },
+                    ));
+
+                    // Past moves list
+                    parent.spawn((
+                        TextBundle::from_section(
+                            "",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: TEXT_SIZE - 4.0,
+                                color: TEXT_COLOR,
+                            },
+                        ),
+                        PastMovesText,
                     ));
                 });
         });
@@ -152,6 +214,17 @@ fn reset_board_button(
                 *color = NORMAL_BUTTON.into();
             }
         }
+    }
+}
+
+fn past_moves_text(
+    mut events: EventReader<PieceMoveEvent>,
+    mut query: Query<&mut Text, With<PastMovesText>>,
+) {
+    for event in events.iter() {
+        let mut text = query.single_mut();
+        text.sections[0].value.push_str("\n");
+        text.sections[0].value += &event.piece_move().as_algebraic();
     }
 }
 
