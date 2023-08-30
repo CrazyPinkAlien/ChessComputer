@@ -34,6 +34,14 @@ impl Move {
         }
     }
 
+    pub fn from(&self) -> BoardPosition {
+        self.from
+    }
+
+    pub fn to(&self) -> BoardPosition {
+        self.to
+    }
+
     pub fn as_algebraic(&self) -> String {
         let mut algebraic = String::new();
         algebraic.push_str(match self.piece_type {
@@ -45,7 +53,7 @@ impl Move {
             PieceType::Pawn => "",
         });
         if self.is_capture {
-            algebraic.push_str("x");
+            algebraic.push('x');
         }
         algebraic.push_str(match self.to.file {
             0 => "a",
@@ -60,13 +68,5 @@ impl Move {
         });
         algebraic += &(8 - self.to.rank).to_string();
         algebraic
-    }
-
-    pub fn from(&self) -> BoardPosition {
-        self.from
-    }
-
-    pub fn to(&self) -> BoardPosition {
-        self.to
     }
 }

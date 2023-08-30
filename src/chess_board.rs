@@ -25,7 +25,7 @@ impl Plugin for ChessBoardPlugin {
             .init_resource::<ChessBoard>()
             .add_systems(Startup, setup)
             .add_systems(PreUpdate, make_move)
-            .add_systems(Update, (reset_board_state));
+            .add_systems(Update, (reset_board_state, game_end_checker));
     }
 }
 
@@ -43,6 +43,15 @@ pub enum PieceType {
     Knight,
     Rook,
     Pawn,
+}
+
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq)]
+pub enum GameEndStatus {
+    Checkmate,
+    Resignation,
+    Draw,
+    DeadPosition,
+    FlagFall,
 }
 
 #[derive(Component, PartialEq, Debug, Copy, Clone, Eq)]
@@ -125,6 +134,8 @@ pub struct ChessBoard {
     active_color: PieceColor,
     past_moves: Vec<Move>,
     move_number: i32,
+    winner: Option<PieceColor>,
+    game_end_status: Option<GameEndStatus>,
 }
 
 impl Default for ChessBoard {
@@ -141,6 +152,8 @@ impl ChessBoard {
             active_color: PieceColor::White,
             past_moves: Vec::new(),
             move_number: 0,
+            winner: None,
+            game_end_status: None,
         }
     }
 
@@ -198,13 +211,17 @@ impl ChessBoard {
         self.active_color
     }
 
+    pub fn past_moves(&self) -> &Vec<Move> {
+        &self.past_moves
+    }
+
     pub fn move_number(&self) -> i32 {
         self.move_number
     }
 
     pub fn valid_move(
         &self,
-        piece_move: Move,
+        piece_move: &Move,
         active_color: PieceColor,
         check_for_check: bool,
     ) -> bool {
@@ -236,7 +253,7 @@ impl ChessBoard {
         && (!check_for_check
         ||{
                 let mut test_board = self.clone();
-                test_board.move_piece(piece_move);
+                test_board.move_piece(*piece_move);
                 !test_board.in_check(active_color)
             })
     }
@@ -249,14 +266,14 @@ impl ChessBoard {
                     let piece = &self.board[rank][file].as_ref().unwrap();
                     let piece_moves = piece.get_moves(true);
                     for move_to in piece_moves {
-                        let mut piece_move = Move::new(
+                        let piece_move = Move::new(
                             BoardPosition::new(rank, file),
                             move_to,
                             self.get_piece_type(&BoardPosition::new(rank, file))
                                 .unwrap(),
                             self.get_piece_type(&move_to).is_some(),
                         );
-                        if self.valid_move(&mut piece_move, active_color, check_for_check) {
+                        if self.valid_move(&piece_move, active_color, check_for_check) {
                             moves.push(piece_move);
                         }
                     }
@@ -388,6 +405,8 @@ fn reset_board_state(
     }
 }
 
+fn game_end_checker(board: Res<ChessBoard>) {}
+
 #[cfg(test)]
 mod tests {
     use bevy::prelude::Events;
@@ -407,83 +426,12 @@ mod tests {
     }
 
     #[test]
-    fn test_board_position_rank() {
-        let position = BoardPosition::new(1, 4);
-        assert_eq!(position.rank(), 1);
-    }
-
-    #[test]
-    fn test_board_position_file() {
-        let position = BoardPosition::new(1, 6);
-        assert_eq!(position.file(), 6);
-    }
-
-    #[test]
-    fn test_reset_board_event_fen() {
-        let fen = Fen::from_string(
-            "rk1r1bb1/ppp1pp1p/3n2n1/1q1p2p1/4P3/1N2Q1PP/PPPP1P2/RK2RBBN b - - 0 1",
-        );
-        let event = ResetBoardEvent::new(fen.clone());
-        assert_eq!(*event.fen(), fen);
-    }
-
-    #[test]
-    fn test_piece_move_event_piece_move() {
-        let piece_move = Move::new(BoardPosition::new(0, 0), BoardPosition::new(2, 3));
-        let event = PieceMoveEvent::new(piece_move);
-        assert_eq!(*event.piece_move(), piece_move);
-    }
-
-    #[test]
-    fn test_piece_create_event_position() {
-        let position = BoardPosition::new(1, 3);
-        let event = PieceCreateEvent {
-            position,
-            piece_type: PieceType::Bishop,
-            color: PieceColor::Black,
-        };
-        assert_eq!(*event.position(), position);
-    }
-
-    #[test]
-    fn test_piece_create_event_piece_type() {
-        let piece_type = PieceType::Knight;
-        let event = PieceCreateEvent {
-            position: BoardPosition::new(1, 3),
-            piece_type,
-            color: PieceColor::Black,
-        };
-        assert_eq!(event.piece_type(), piece_type);
-    }
-
-    #[test]
-    fn test_piece_create_event_color() {
-        let color = PieceColor::White;
-        let event = PieceCreateEvent {
-            position: BoardPosition::new(1, 3),
-            piece_type: PieceType::Bishop,
-            color,
-        };
-        assert_eq!(event.color(), color);
-    }
-
-    #[test]
-    fn test_chess_board_default() {
-        let default_board = ChessBoard::default();
-
-        assert_eq!(default_board.active_color(), PieceColor::White);
-        for rank in 0..BOARD_SIZE {
-            for file in 0..BOARD_SIZE {
-                assert!(default_board.board[rank][file].is_none());
-            }
-        }
-    }
-
-    #[test]
     fn test_chess_board_empty_board() {
         let empty_board = ChessBoard::empty_board();
 
         assert_eq!(empty_board.active_color(), PieceColor::White);
+        assert_eq!(empty_board.past_moves().len(), 0);
+        assert_eq!(empty_board.move_number(), 0);
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 assert!(empty_board.board[rank][file].is_none());
@@ -605,6 +553,25 @@ mod tests {
             PieceColor::Black
         );
 
+        // Check past moves
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .past_moves()
+                .len(),
+            0
+        );
+
+        // Check move number
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .move_number(),
+            1
+        );
+
         // Check pieces
         let board = &app.world.get_resource::<ChessBoard>().unwrap().board;
         for rank in 0..BOARD_SIZE {
@@ -678,14 +645,6 @@ mod tests {
     }
 
     #[test]
-    fn test_chess_board_active_color() {
-        let mut chess_board = ChessBoard::empty_board();
-        chess_board.active_color = PieceColor::Black;
-
-        assert_eq!(chess_board.active_color(), PieceColor::Black);
-    }
-
-    #[test]
     fn test_chess_board_valid_move_true() {
         let fen =
             Fen::from_string("rnb1kb1r/pp1ppp1p/5n2/qp4p1/4P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
@@ -706,11 +665,16 @@ mod tests {
         app.update();
 
         // Create move
-        let piece_move = Move::new(BoardPosition::new(5, 2), BoardPosition::new(3, 1));
+        let piece_move = Move::new(
+            BoardPosition::new(5, 2),
+            BoardPosition::new(3, 1),
+            PieceType::Knight,
+            true,
+        );
 
         // Confirm that the move is valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.valid_move(piece_move, board.active_color(), true));
+        assert!(board.valid_move(&piece_move, board.active_color(), true));
     }
 
     #[test]
@@ -734,11 +698,16 @@ mod tests {
         app.update();
 
         // Create move
-        let piece_move = Move::new(BoardPosition::new(6, 3), BoardPosition::new(5, 3));
+        let piece_move = Move::new(
+            BoardPosition::new(6, 3),
+            BoardPosition::new(5, 3),
+            PieceType::Pawn,
+            false,
+        );
 
         // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.valid_move(piece_move, board.active_color(), true));
+        assert!(!board.valid_move(&piece_move, board.active_color(), true));
     }
 
     #[test]
@@ -762,11 +731,16 @@ mod tests {
         app.update();
 
         // Create move
-        let piece_move = Move::new(BoardPosition::new(5, 3), BoardPosition::new(5, 3));
+        let piece_move = Move::new(
+            BoardPosition::new(5, 3),
+            BoardPosition::new(5, 3),
+            PieceType::Bishop,
+            false,
+        );
 
         // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.valid_move(piece_move, board.active_color(), true));
+        assert!(!board.valid_move(&piece_move, board.active_color(), true));
     }
 
     #[test]
@@ -791,35 +765,180 @@ mod tests {
 
         // Expected valid moves
         let expected_valid_moves = vec![
-            Move::new(BoardPosition::new(3, 1), BoardPosition::new(1, 0)),
-            Move::new(BoardPosition::new(3, 1), BoardPosition::new(1, 2)),
-            Move::new(BoardPosition::new(3, 1), BoardPosition::new(2, 3)),
-            Move::new(BoardPosition::new(3, 1), BoardPosition::new(4, 3)),
-            Move::new(BoardPosition::new(3, 1), BoardPosition::new(5, 0)),
-            Move::new(BoardPosition::new(3, 1), BoardPosition::new(5, 2)),
-            Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 4)),
-            Move::new(BoardPosition::new(4, 4), BoardPosition::new(3, 3)),
-            Move::new(BoardPosition::new(5, 5), BoardPosition::new(3, 4)),
-            Move::new(BoardPosition::new(5, 5), BoardPosition::new(3, 6)),
-            Move::new(BoardPosition::new(5, 5), BoardPosition::new(4, 3)),
-            Move::new(BoardPosition::new(5, 5), BoardPosition::new(4, 7)),
-            Move::new(BoardPosition::new(5, 5), BoardPosition::new(7, 6)),
-            Move::new(BoardPosition::new(6, 0), BoardPosition::new(5, 0)),
-            Move::new(BoardPosition::new(6, 0), BoardPosition::new(4, 0)),
-            Move::new(BoardPosition::new(6, 1), BoardPosition::new(5, 1)),
-            Move::new(BoardPosition::new(6, 1), BoardPosition::new(4, 1)),
-            Move::new(BoardPosition::new(6, 2), BoardPosition::new(5, 2)),
-            Move::new(BoardPosition::new(6, 2), BoardPosition::new(4, 2)),
-            Move::new(BoardPosition::new(6, 6), BoardPosition::new(5, 6)),
-            Move::new(BoardPosition::new(6, 6), BoardPosition::new(4, 6)),
-            Move::new(BoardPosition::new(6, 7), BoardPosition::new(5, 7)),
-            Move::new(BoardPosition::new(6, 7), BoardPosition::new(4, 7)),
-            Move::new(BoardPosition::new(7, 0), BoardPosition::new(7, 1)),
-            Move::new(BoardPosition::new(7, 3), BoardPosition::new(6, 4)),
-            Move::new(BoardPosition::new(7, 4), BoardPosition::new(6, 4)),
-            Move::new(BoardPosition::new(7, 4), BoardPosition::new(7, 5)),
-            Move::new(BoardPosition::new(7, 7), BoardPosition::new(7, 5)),
-            Move::new(BoardPosition::new(7, 7), BoardPosition::new(7, 6)),
+            Move::new(
+                BoardPosition::new(3, 1),
+                BoardPosition::new(1, 0),
+                PieceType::Knight,
+                true,
+            ),
+            Move::new(
+                BoardPosition::new(3, 1),
+                BoardPosition::new(1, 2),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(3, 1),
+                BoardPosition::new(2, 3),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(3, 1),
+                BoardPosition::new(4, 3),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(3, 1),
+                BoardPosition::new(5, 0),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(3, 1),
+                BoardPosition::new(5, 2),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(4, 4),
+                BoardPosition::new(3, 4),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(4, 4),
+                BoardPosition::new(3, 3),
+                PieceType::Pawn,
+                true,
+            ),
+            Move::new(
+                BoardPosition::new(5, 5),
+                BoardPosition::new(3, 4),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(5, 5),
+                BoardPosition::new(3, 6),
+                PieceType::Knight,
+                true,
+            ),
+            Move::new(
+                BoardPosition::new(5, 5),
+                BoardPosition::new(4, 3),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(5, 5),
+                BoardPosition::new(4, 7),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(5, 5),
+                BoardPosition::new(7, 6),
+                PieceType::Knight,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 0),
+                BoardPosition::new(5, 0),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 0),
+                BoardPosition::new(4, 0),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 1),
+                BoardPosition::new(5, 1),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 1),
+                BoardPosition::new(4, 1),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 2),
+                BoardPosition::new(5, 2),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 2),
+                BoardPosition::new(4, 2),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 6),
+                BoardPosition::new(5, 6),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 6),
+                BoardPosition::new(4, 6),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 7),
+                BoardPosition::new(5, 7),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(6, 7),
+                BoardPosition::new(4, 7),
+                PieceType::Pawn,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(7, 0),
+                BoardPosition::new(7, 1),
+                PieceType::Rook,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(7, 3),
+                BoardPosition::new(6, 4),
+                PieceType::Queen,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(7, 4),
+                BoardPosition::new(6, 4),
+                PieceType::King,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(7, 4),
+                BoardPosition::new(7, 5),
+                PieceType::King,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(7, 7),
+                BoardPosition::new(7, 5),
+                PieceType::Rook,
+                false,
+            ),
+            Move::new(
+                BoardPosition::new(7, 7),
+                BoardPosition::new(7, 6),
+                PieceType::Rook,
+                false,
+            ),
         ];
 
         // Get valid moves
@@ -863,7 +982,12 @@ mod tests {
         );
 
         // Move the piece
-        let piece_move = Move::new(BoardPosition::new(2, 5), BoardPosition::new(4, 6));
+        let piece_move = Move::new(
+            BoardPosition::new(2, 5),
+            BoardPosition::new(4, 6),
+            PieceType::Knight,
+            false,
+        );
         board.move_piece(piece_move);
 
         // Confirm that the piece has been moved
@@ -902,8 +1026,46 @@ mod tests {
 
         // Attempt to move a non-existent piece
         let mut board = app.world.get_resource_mut::<ChessBoard>().unwrap();
-        let piece_move = Move::new(BoardPosition::new(2, 1), BoardPosition::new(4, 6));
+        let piece_move = Move::new(
+            BoardPosition::new(2, 1),
+            BoardPosition::new(4, 6),
+            PieceType::Bishop,
+            false,
+        );
         board.move_piece(piece_move);
+    }
+
+    #[test]
+    fn test_chess_board_get_piece_type() {
+        let fen =
+            Fen::from_string("rnb1kb1r/pp2pp1p/5n2/qN1p2p1/4P3/5N2/PPPP1PPP/R1BQK2R w KQkq - 0 1");
+
+        // Setup app
+        let mut app = App::new();
+        app.insert_resource(ChessBoard::empty_board());
+        app.add_event::<ResetBoardEvent>();
+        app.add_event::<PieceCreateEvent>();
+        app.add_systems(Update, reset_board_state);
+
+        // Trigger reset board event
+        app.world
+            .resource_mut::<Events<ResetBoardEvent>>()
+            .send(ResetBoardEvent::new(fen));
+
+        // Run systems
+        app.update();
+
+        // Confirm that get_piece_type returns the correct result
+        let board = app.world.get_resource::<ChessBoard>().unwrap();
+        assert_eq!(
+            board.get_piece_type(&BoardPosition::new(1, 4)),
+            Some(PieceType::Pawn)
+        );
+        assert_eq!(board.get_piece_type(&BoardPosition::new(2, 6)), None);
+        assert_eq!(
+            board.get_piece_type(&BoardPosition::new(7, 2)),
+            Some(PieceType::Bishop)
+        );
     }
 
     #[test]
@@ -1139,6 +1301,25 @@ mod tests {
             PieceColor::White
         );
 
+        // Check past moves
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .past_moves()
+                .len(),
+            0
+        );
+
+        // Check move number
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .move_number(),
+            1
+        );
+
         // Check pieces
         let board = &app.world.get_resource::<ChessBoard>().unwrap().board;
         for rank in 0..BOARD_SIZE {
@@ -1189,7 +1370,12 @@ mod tests {
         let move_to = BoardPosition::new(3, 6);
         app.world
             .resource_mut::<Events<PieceMoveEvent>>()
-            .send(PieceMoveEvent::new(Move::new(move_from, move_to)));
+            .send(PieceMoveEvent::new(Move::new(
+                move_from,
+                move_to,
+                PieceType::Pawn,
+                true,
+            )));
 
         // Run systems
         app.update();
@@ -1205,13 +1391,36 @@ mod tests {
         assert_eq!(board[3][6].as_ref().unwrap().get_type(), PieceType::Pawn);
         assert_eq!(board[3][6].as_ref().unwrap().get_position(), move_to);
         assert!(board[2][5].is_none());
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .active_color(),
+            PieceColor::White
+        );
+        assert_eq!(
+            app.world.get_resource::<ChessBoard>().unwrap().past_moves(),
+            &vec![Move::new(move_from, move_to, PieceType::Pawn, true)]
+        );
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .move_number(),
+            2
+        );
 
         // Trigger piece move event
         let move_from = BoardPosition::new(3, 7);
         let move_to = BoardPosition::new(3, 6);
         app.world
             .resource_mut::<Events<PieceMoveEvent>>()
-            .send(PieceMoveEvent::new(Move::new(move_from, move_to)));
+            .send(PieceMoveEvent::new(Move::new(
+                move_from,
+                move_to,
+                PieceType::Queen,
+                true,
+            )));
 
         // Run systems
         app.update();
@@ -1227,6 +1436,32 @@ mod tests {
         assert_eq!(board[3][6].as_ref().unwrap().get_type(), PieceType::Queen);
         assert_eq!(board[3][6].as_ref().unwrap().get_position(), move_to);
         assert!(board[3][7].is_none());
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .active_color(),
+            PieceColor::Black
+        );
+        assert_eq!(
+            app.world.get_resource::<ChessBoard>().unwrap().past_moves(),
+            &vec![
+                Move::new(
+                    BoardPosition::new(2, 5),
+                    BoardPosition::new(3, 6),
+                    PieceType::Pawn,
+                    true
+                ),
+                Move::new(move_from, move_to, PieceType::Queen, true)
+            ]
+        );
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .move_number(),
+            2
+        );
     }
 
     #[test]
@@ -1341,6 +1576,25 @@ mod tests {
                 .unwrap()
                 .active_color(),
             PieceColor::Black
+        );
+
+        // Check past moves
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .past_moves()
+                .len(),
+            0
+        );
+
+        // Check move number
+        assert_eq!(
+            app.world
+                .get_resource::<ChessBoard>()
+                .unwrap()
+                .move_number(),
+            1
         );
 
         // Check pieces

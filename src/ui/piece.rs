@@ -119,13 +119,13 @@ pub(super) fn piece_click_handler(
                         }
                     } else if click.input.state == ButtonState::Released && dragging.0 {
                         if click.position.is_some() {
-                            let mut potential_move = Move::new_from_board(
+                            let potential_move = Move::new_from_board(
                                 *piece_position,
                                 click.position.unwrap(),
                                 &board,
                             );
                             // When the button is released move the piece to that square if it is a valid move
-                            if board.valid_move(&mut potential_move, board.active_color(), true) {
+                            if board.valid_move(&potential_move, board.active_color(), true) {
                                 let event = PieceMoveEvent::new(potential_move);
                                 piece_move_event.send(event);
                             }

@@ -238,7 +238,7 @@ fn past_moves_text(
         // Add the move in algebraic notation
         text.sections[0].value += &event.piece_move().as_algebraic();
 
-        text.sections[0].value.push_str("\n");
+        text.sections[0].value.push('\n');
     }
 }
 
