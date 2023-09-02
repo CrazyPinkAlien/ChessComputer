@@ -22,23 +22,23 @@ impl Knight {
 }
 
 impl Piece for Knight {
-    fn get_type(&self) -> PieceType {
-        PieceType::Knight
+    fn get_type(&self) -> &PieceType {
+        &PieceType::Knight
     }
 
-    fn get_color(&self) -> PieceColor {
-        self.color
+    fn get_color(&self) -> &PieceColor {
+        &self.color
     }
 
-    fn get_position(&self) -> BoardPosition {
-        self.position
+    fn get_position(&self) -> &BoardPosition {
+        &self.position
     }
 
-    fn set_position(&mut self, new_position: BoardPosition, _moved: bool) {
-        self.position = new_position;
+    fn set_position(&mut self, new_position: &BoardPosition, _moved: bool) {
+        self.position = *new_position;
     }
 
-    fn get_moves(&self, _include_captures: bool) -> Vec<BoardPosition> {
+    fn get_moves(&self, _include_captures: &bool) -> Vec<BoardPosition> {
         let mut moves = Vec::new();
         for rank in 0..8 {
             for file in 0..8 {
@@ -60,16 +60,16 @@ impl Piece for Knight {
         false
     }
 
-    fn get_starting_position(&self) -> BoardPosition {
-        self.starting_position
+    fn get_starting_position(&self) -> &BoardPosition {
+        &self.starting_position
     }
 
-    fn valid_move(&self, end_position: BoardPosition) -> bool {
-        let valid_moves = self.get_moves(false);
-        valid_moves.contains(&end_position)
+    fn valid_move(&self, end_position: &BoardPosition) -> bool {
+        let valid_moves = self.get_moves(&false);
+        valid_moves.contains(end_position)
     }
 
-    fn valid_capture(&self, end_position: BoardPosition) -> bool {
+    fn valid_capture(&self, end_position: &BoardPosition) -> bool {
         self.valid_move(end_position)
     }
 }

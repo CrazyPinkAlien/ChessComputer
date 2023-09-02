@@ -31,8 +31,8 @@ impl Fen {
         &self.active_color
     }
 
-    pub fn move_number(&self) -> i32 {
-        self.move_number
+    pub fn move_number(&self) -> &i32 {
+        &self.move_number
     }
 }
 

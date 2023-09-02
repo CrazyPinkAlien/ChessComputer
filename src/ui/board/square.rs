@@ -32,7 +32,7 @@ impl SquareBundle {
         color: PieceColor,
         properties: &Res<BoardProperties>,
     ) -> Self {
-        let (x, y) = properties.position_to_transform(position);
+        let (x, y) = properties.position_to_transform(&position);
         let square_color = match color {
             PieceColor::Black => properties.color_black,
             PieceColor::White => properties.color_white,

@@ -20,13 +20,13 @@ pub(super) struct BoardProperties {
 }
 
 impl BoardProperties {
-    pub(super) fn position_to_transform(&self, position: BoardPosition) -> (f32, f32) {
-        let x = (position.file() as f32 - 4.0) * self.square_size + self.center.x;
-        let y = -1.0 * (position.rank() as f32 - 4.0) * self.square_size + self.center.y;
+    pub(super) fn position_to_transform(&self, position: &BoardPosition) -> (f32, f32) {
+        let x = (*position.file() as f32 - 4.0) * self.square_size + self.center.x;
+        let y = -1.0 * (*position.rank() as f32 - 4.0) * self.square_size + self.center.y;
         (x, y)
     }
 
-    pub(super) fn transform_to_position(&self, transform: Vec2) -> Option<BoardPosition> {
+    pub(super) fn transform_to_position(&self, transform: &Vec2) -> Option<BoardPosition> {
         let file = ((transform[0] - self.center.x) / self.square_size + 4.0).round() as i32;
         let rank = (-1.0 * (transform[1] - self.center.y) / self.square_size + 4.0).round() as i32;
         if !(0..=7).contains(&rank) || !(0..=7).contains(&file) {
@@ -36,7 +36,7 @@ impl BoardProperties {
         }
     }
 
-    fn position_to_color(&self, position: BoardPosition) -> PieceColor {
+    fn position_to_color(&self, position: &BoardPosition) -> PieceColor {
         if (position.rank() % 2 == 0) == (position.file() % 2 == 0) {
             PieceColor::White
         } else {
@@ -63,7 +63,7 @@ pub(super) fn setup(mut commands: Commands, properties: Res<BoardProperties>) {
     for rank in 0..8 {
         for file in 0..8 {
             let position = BoardPosition::new(rank, file);
-            let color = properties.position_to_color(position);
+            let color = properties.position_to_color(&position);
             squares.push(square::SquareBundle::new(
                 position,
                 properties.square_size,
@@ -84,11 +84,11 @@ pub(super) fn highlight_valid_squares(
     board: Res<ChessBoard>,
     properties: Res<BoardProperties>,
 ) {
-    let valid_moves = board.get_valid_moves(board.active_color(), true);
+    let valid_moves = board.get_valid_moves(board.active_color(), &true);
     for (piece_position, dragging) in piece_query.iter() {
         for (mut sprite, position, color) in square_query.iter_mut() {
             // Highlight the square if it's valid
-            let sprite_color = if dragging.get()
+            let sprite_color = if *dragging.get()
                 && valid_moves.contains(&Move::new_from_board(*piece_position, *position, &board))
             {
                 match color.get() {

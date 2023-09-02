@@ -68,12 +68,12 @@ impl BoardPosition {
         BoardPosition { rank, file }
     }
 
-    pub fn rank(&self) -> usize {
-        self.rank
+    pub fn rank(&self) -> &usize {
+        &self.rank
     }
 
-    pub fn file(&self) -> usize {
-        self.file
+    pub fn file(&self) -> &usize {
+        &self.file
     }
 }
 
@@ -119,12 +119,12 @@ impl PieceCreateEvent {
         &self.position
     }
 
-    pub fn piece_type(&self) -> PieceType {
-        self.piece_type
+    pub fn piece_type(&self) -> &PieceType {
+        &self.piece_type
     }
 
-    pub fn color(&self) -> PieceColor {
-        self.color
+    pub fn color(&self) -> &PieceColor {
+        &self.color
     }
 }
 
@@ -203,27 +203,27 @@ impl ChessBoard {
             _ => panic!("Unrecognised active color in FEN: {}", fen.active_color()),
         };
         // Set move number
-        board_state.move_number = fen.move_number();
+        board_state.move_number = *fen.move_number();
         board_state
     }
 
-    pub fn active_color(&self) -> PieceColor {
-        self.active_color
+    pub fn active_color(&self) -> &PieceColor {
+        &self.active_color
     }
 
     pub fn past_moves(&self) -> &Vec<Move> {
         &self.past_moves
     }
 
-    pub fn move_number(&self) -> i32 {
-        self.move_number
+    pub fn move_number(&self) -> &i32 {
+        &self.move_number
     }
 
     pub fn valid_move(
         &self,
         piece_move: &Move,
-        active_color: PieceColor,
-        check_for_check: bool,
+        active_color: &PieceColor,
+        check_for_check: &bool,
     ) -> bool {
         // Get piece
         if self.board[piece_move.from().rank][piece_move.from().file].is_none() {
@@ -237,7 +237,7 @@ impl ChessBoard {
         (piece.get_color() == active_color)
         // Check whether or not there are any pieces there
         && match self.get_piece_color(piece_move.to()) {
-            Some(color) => if color == piece.get_color() {
+            Some(color) => if color == *piece.get_color() {
                 // If a friendly piece is here this move is invalid
                 false
             } else {
@@ -248,23 +248,23 @@ impl ChessBoard {
             None => piece.valid_move(piece_move.to())
         }
         // No piece in the way for sliding pieces
-        && (!piece.is_sliding() || self.no_piece_between_squares(&piece_move.from(), &piece_move.to()))
+        && (!piece.is_sliding() || self.no_piece_between_squares(piece_move.from(), piece_move.to()))
         // Finally, the move must not put the active color in check
         && (!check_for_check
         ||{
                 let mut test_board = self.clone();
-                test_board.move_piece(*piece_move);
+                test_board.move_piece(piece_move);
                 !test_board.in_check(active_color)
             })
     }
 
-    pub fn get_valid_moves(&self, active_color: PieceColor, check_for_check: bool) -> Vec<Move> {
+    pub fn get_valid_moves(&self, active_color: &PieceColor, check_for_check: &bool) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 if self.board[rank][file].is_some() {
                     let piece = &self.board[rank][file].as_ref().unwrap();
-                    let piece_moves = piece.get_moves(true);
+                    let piece_moves = piece.get_moves(&true);
                     for move_to in piece_moves {
                         let piece_move = Move::new(
                             BoardPosition::new(rank, file),
@@ -299,7 +299,7 @@ impl ChessBoard {
         });
     }
 
-    fn move_piece(&mut self, piece_move: Move) {
+    fn move_piece(&mut self, piece_move: &Move) {
         if self.board[piece_move.from().rank][piece_move.from().file].is_none() {
             panic!("No piece at start location.");
         }
@@ -315,22 +315,22 @@ impl ChessBoard {
     pub fn get_piece_type(&self, position: &BoardPosition) -> Option<PieceType> {
         self.board[position.rank][position.file]
             .as_ref()
-            .map(|piece| piece.get_type())
+            .map(|piece| *piece.get_type())
     }
 
-    fn get_piece_color(&self, position: BoardPosition) -> Option<PieceColor> {
+    fn get_piece_color(&self, position: &BoardPosition) -> Option<PieceColor> {
         self.board[position.rank][position.file]
             .as_ref()
-            .map(|piece| piece.get_color())
+            .map(|piece| *piece.get_color())
     }
 
-    fn in_check(&self, color: PieceColor) -> bool {
+    fn in_check(&self, color: &PieceColor) -> bool {
         // Get king location
         let mut king_location = BoardPosition::new(0, 0);
         'outer: for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 if self.board[rank][file].is_some()
-                    && self.board[rank][file].as_ref().unwrap().get_type() == PieceType::King
+                    && *self.board[rank][file].as_ref().unwrap().get_type() == PieceType::King
                     && self.board[rank][file].as_ref().unwrap().get_color() == color
                 {
                     king_location = BoardPosition::new(rank, file);
@@ -344,10 +344,10 @@ impl ChessBoard {
             PieceColor::Black => PieceColor::White,
         };
         // Get valid moves
-        let moves = self.get_valid_moves(opponent_color, false);
+        let moves = self.get_valid_moves(&opponent_color, &false);
         // Check if any valid moves can take the king
         for piece_move in moves {
-            if piece_move.to() == king_location {
+            if *piece_move.to() == king_location {
                 return true;
             }
         }
@@ -355,16 +355,16 @@ impl ChessBoard {
     }
 
     fn no_piece_between_squares(&self, start: &BoardPosition, end: &BoardPosition) -> bool {
-        let mut rank = start.rank() as i32;
-        let mut file = start.file() as i32;
-        rank += (end.rank() as i32 - start.rank() as i32).signum();
-        file += (end.file() as i32 - start.file() as i32).signum();
-        while rank as usize != end.rank() || file as usize != end.file() {
+        let mut rank = *start.rank() as i32;
+        let mut file = *start.file() as i32;
+        rank += (*end.rank() as i32 - *start.rank() as i32).signum();
+        file += (*end.file() as i32 - *start.file() as i32).signum();
+        while rank as usize != *end.rank() || file as usize != *end.file() {
             if self.board[rank as usize][file as usize].is_some() {
                 return false;
             }
-            rank += (end.rank() as i32 - start.rank() as i32).signum();
-            file += (end.file() as i32 - start.file() as i32).signum();
+            rank += (*end.rank() as i32 - *start.rank() as i32).signum();
+            file += (*end.file() as i32 - *start.file() as i32).signum();
         }
         true
     }
@@ -377,7 +377,7 @@ fn setup(mut create_event: EventWriter<PieceCreateEvent>, mut board: ResMut<Ches
 fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<ChessBoard>) {
     for event in move_events.iter() {
         // Move the piece
-        board.move_piece(event.piece_move);
+        board.move_piece(event.piece_move());
 
         // Change the active color
         board.active_color = match board.active_color {
@@ -386,7 +386,7 @@ fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<Che
         };
 
         // Make a record of the move
-        board.past_moves.push(event.piece_move);
+        board.past_moves.push(*event.piece_move());
 
         // Increment the move number if it is now white's turn
         if board.active_color == PieceColor::White {
@@ -429,9 +429,9 @@ mod tests {
     fn test_chess_board_empty_board() {
         let empty_board = ChessBoard::empty_board();
 
-        assert_eq!(empty_board.active_color(), PieceColor::White);
+        assert_eq!(*empty_board.active_color(), PieceColor::White);
         assert_eq!(empty_board.past_moves().len(), 0);
-        assert_eq!(empty_board.move_number(), 0);
+        assert_eq!(*empty_board.move_number(), 0);
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 assert!(empty_board.board[rank][file].is_none());
@@ -546,7 +546,7 @@ mod tests {
 
         // Check active color
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
@@ -565,7 +565,7 @@ mod tests {
 
         // Check move number
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .move_number(),
@@ -580,15 +580,15 @@ mod tests {
                     assert!(board[rank][file].is_none());
                 } else {
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_type(),
+                        *board[rank][file].as_ref().unwrap().get_type(),
                         pieces[rank][file].unwrap().0
                     );
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_color(),
+                        *board[rank][file].as_ref().unwrap().get_color(),
                         pieces[rank][file].unwrap().1
                     );
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_position(),
+                        *board[rank][file].as_ref().unwrap().get_position(),
                         BoardPosition::new(rank, file)
                     );
                 }
@@ -674,7 +674,7 @@ mod tests {
 
         // Confirm that the move is valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.valid_move(&piece_move, board.active_color(), true));
+        assert!(board.valid_move(&piece_move, board.active_color(), &true));
     }
 
     #[test]
@@ -707,7 +707,7 @@ mod tests {
 
         // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.valid_move(&piece_move, board.active_color(), true));
+        assert!(!board.valid_move(&piece_move, board.active_color(), &true));
     }
 
     #[test]
@@ -740,7 +740,7 @@ mod tests {
 
         // Confirm that the move is not valid
         let board = &app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.valid_move(&piece_move, board.active_color(), true));
+        assert!(!board.valid_move(&piece_move, board.active_color(), &true));
     }
 
     #[test]
@@ -943,7 +943,7 @@ mod tests {
 
         // Get valid moves
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        let valid_moves = board.get_valid_moves(board.active_color(), true);
+        let valid_moves = board.get_valid_moves(board.active_color(), &true);
 
         // Confirm that the results match
         assert_eq!(expected_valid_moves, valid_moves);
@@ -973,11 +973,11 @@ mod tests {
         let mut board = app.world.get_resource_mut::<ChessBoard>().unwrap();
         assert!(board.board[2][5].is_some());
         assert_eq!(
-            board.board[2][5].as_ref().unwrap().get_color(),
+            *board.board[2][5].as_ref().unwrap().get_color(),
             PieceColor::Black
         );
         assert_eq!(
-            board.board[2][5].as_ref().unwrap().get_type(),
+            *board.board[2][5].as_ref().unwrap().get_type(),
             PieceType::Knight
         );
 
@@ -988,17 +988,17 @@ mod tests {
             PieceType::Knight,
             false,
         );
-        board.move_piece(piece_move);
+        board.move_piece(&piece_move);
 
         // Confirm that the piece has been moved
         assert!(board.board[2][5].is_none());
         assert!(board.board[4][6].is_some());
         assert_eq!(
-            board.board[4][6].as_ref().unwrap().get_color(),
+            *board.board[4][6].as_ref().unwrap().get_color(),
             PieceColor::Black
         );
         assert_eq!(
-            board.board[4][6].as_ref().unwrap().get_type(),
+            *board.board[4][6].as_ref().unwrap().get_type(),
             PieceType::Knight
         );
     }
@@ -1032,7 +1032,7 @@ mod tests {
             PieceType::Bishop,
             false,
         );
-        board.move_piece(piece_move);
+        board.move_piece(&piece_move);
     }
 
     #[test]
@@ -1091,12 +1091,12 @@ mod tests {
         // Confirm that get_piece_color returns the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
         assert_eq!(
-            board.get_piece_color(BoardPosition::new(1, 4)),
+            board.get_piece_color(&BoardPosition::new(1, 4)),
             Some(PieceColor::Black)
         );
-        assert_eq!(board.get_piece_color(BoardPosition::new(2, 6)), None);
+        assert_eq!(board.get_piece_color(&BoardPosition::new(2, 6)), None);
         assert_eq!(
-            board.get_piece_color(BoardPosition::new(7, 2)),
+            board.get_piece_color(&BoardPosition::new(7, 2)),
             Some(PieceColor::White)
         );
     }
@@ -1123,8 +1123,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.in_check(PieceColor::White));
-        assert!(!board.in_check(PieceColor::Black));
+        assert!(board.in_check(&PieceColor::White));
+        assert!(!board.in_check(&PieceColor::Black));
     }
 
     #[test]
@@ -1149,8 +1149,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(board.in_check(PieceColor::Black));
-        assert!(!board.in_check(PieceColor::White));
+        assert!(board.in_check(&PieceColor::Black));
+        assert!(!board.in_check(&PieceColor::White));
     }
 
     #[test]
@@ -1175,8 +1175,8 @@ mod tests {
 
         // Confirm that we get the correct result
         let board = app.world.get_resource::<ChessBoard>().unwrap();
-        assert!(!board.in_check(PieceColor::White));
-        assert!(!board.in_check(PieceColor::Black));
+        assert!(!board.in_check(&PieceColor::White));
+        assert!(!board.in_check(&PieceColor::Black));
     }
 
     #[test]
@@ -1294,7 +1294,7 @@ mod tests {
 
         // Check active color
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
@@ -1313,7 +1313,7 @@ mod tests {
 
         // Check move number
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .move_number(),
@@ -1328,15 +1328,15 @@ mod tests {
                     assert!(board[rank][file].is_none());
                 } else {
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_type(),
+                        *board[rank][file].as_ref().unwrap().get_type(),
                         pieces[rank][file].unwrap().0
                     );
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_color(),
+                        *board[rank][file].as_ref().unwrap().get_color(),
                         pieces[rank][file].unwrap().1
                     );
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_position(),
+                        *board[rank][file].as_ref().unwrap().get_position(),
                         BoardPosition::new(rank, file)
                     );
                 }
@@ -1387,12 +1387,15 @@ mod tests {
             PieceColor::White
         );
         assert!(board[3][6].is_some());
-        assert_eq!(board[3][6].as_ref().unwrap().get_color(), PieceColor::Black);
-        assert_eq!(board[3][6].as_ref().unwrap().get_type(), PieceType::Pawn);
-        assert_eq!(board[3][6].as_ref().unwrap().get_position(), move_to);
+        assert_eq!(
+            *board[3][6].as_ref().unwrap().get_color(),
+            PieceColor::Black
+        );
+        assert_eq!(*board[3][6].as_ref().unwrap().get_type(), PieceType::Pawn);
+        assert_eq!(*board[3][6].as_ref().unwrap().get_position(), move_to);
         assert!(board[2][5].is_none());
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
@@ -1403,7 +1406,7 @@ mod tests {
             &vec![Move::new(move_from, move_to, PieceType::Pawn, true)]
         );
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .move_number(),
@@ -1432,12 +1435,15 @@ mod tests {
             PieceColor::Black
         );
         assert!(board[3][6].is_some());
-        assert_eq!(board[3][6].as_ref().unwrap().get_color(), PieceColor::White);
-        assert_eq!(board[3][6].as_ref().unwrap().get_type(), PieceType::Queen);
-        assert_eq!(board[3][6].as_ref().unwrap().get_position(), move_to);
+        assert_eq!(
+            *board[3][6].as_ref().unwrap().get_color(),
+            PieceColor::White
+        );
+        assert_eq!(*board[3][6].as_ref().unwrap().get_type(), PieceType::Queen);
+        assert_eq!(*board[3][6].as_ref().unwrap().get_position(), move_to);
         assert!(board[3][7].is_none());
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
@@ -1456,7 +1462,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .move_number(),
@@ -1571,7 +1577,7 @@ mod tests {
 
         // Check active color
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
@@ -1590,7 +1596,7 @@ mod tests {
 
         // Check move number
         assert_eq!(
-            app.world
+            *app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .move_number(),
@@ -1605,15 +1611,15 @@ mod tests {
                     assert!(board[rank][file].is_none());
                 } else {
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_type(),
+                        *board[rank][file].as_ref().unwrap().get_type(),
                         pieces[rank][file].unwrap().0
                     );
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_color(),
+                        *board[rank][file].as_ref().unwrap().get_color(),
                         pieces[rank][file].unwrap().1
                     );
                     assert_eq!(
-                        board[rank][file].as_ref().unwrap().get_position(),
+                        *board[rank][file].as_ref().unwrap().get_position(),
                         BoardPosition::new(rank, file)
                     );
                 }

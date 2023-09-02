@@ -186,7 +186,7 @@ fn mouse_event_handler(
             .map(|ray| ray.origin.truncate())
         {
             // Check if the mouse is over the board
-            let board_position = properties.transform_to_position(world_position);
+            let board_position = properties.transform_to_position(&world_position);
             // Send a board click event
             let event = BoardClickEvent {
                 position: board_position,
@@ -229,7 +229,7 @@ fn past_moves_text(
         let mut text = query.single_mut();
 
         // Add the move number if the active color is white
-        if board.active_color() == PieceColor::White {
+        if *board.active_color() == PieceColor::White {
             text.sections[0].value += &board.move_number().to_string();
             text.sections[0].value.push_str(". ");
         } else {
@@ -326,7 +326,7 @@ mod tests {
         let board_properties = app.world.get_resource::<BoardProperties>().unwrap();
         assert_eq!(
             board_click.position,
-            board_properties.transform_to_position(click_position)
+            board_properties.transform_to_position(&click_position)
         );
         assert_eq!(board_click.input, mouse_button_input);
     }

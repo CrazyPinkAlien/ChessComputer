@@ -15,15 +15,14 @@ dyn_clone::clone_trait_object!(Piece);
 pub(super) trait Piece:
     Send + Sync + DynClone + 'static + Component<Storage = TableStorage>
 {
-    // TODO some of these functions should return references
-    fn get_type(&self) -> PieceType;
-    fn get_color(&self) -> PieceColor;
-    fn get_position(&self) -> BoardPosition;
-    fn get_starting_position(&self) -> BoardPosition;
-    fn set_position(&mut self, new_position: BoardPosition, moved: bool);
-    fn get_moves(&self, include_captures: bool) -> Vec<BoardPosition>;
-    fn valid_move(&self, end_position: BoardPosition) -> bool;
-    fn valid_capture(&self, end_position: BoardPosition) -> bool;
+    fn get_type(&self) -> &PieceType;
+    fn get_color(&self) -> &PieceColor;
+    fn get_position(&self) -> &BoardPosition;
+    fn get_starting_position(&self) -> &BoardPosition;
+    fn set_position(&mut self, new_position: &BoardPosition, moved: bool);
+    fn get_moves(&self, include_captures: &bool) -> Vec<BoardPosition>;
+    fn valid_move(&self, end_position: &BoardPosition) -> bool;
+    fn valid_capture(&self, end_position: &BoardPosition) -> bool;
     fn is_sliding(&self) -> bool;
 }
 

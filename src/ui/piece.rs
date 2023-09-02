@@ -49,8 +49,8 @@ impl FromWorld for PieceProperties {
 pub(super) struct Dragging(bool);
 
 impl Dragging {
-    pub(super) fn get(&self) -> bool {
-        self.0
+    pub(super) fn get(&self) -> &bool {
+        &self.0
     }
 }
 
@@ -73,6 +73,19 @@ struct PieceBundle {
     tag: PieceTag,
 }
 
+impl PieceBundle {
+    fn new(position: BoardPosition, sprite: SpriteSheetBundle, color: PieceColor) -> Self {
+        PieceBundle {
+            dragging: Dragging(false),
+            position,
+            sprite,
+            color,
+            starting_position: StartingPosition(position),
+            tag: PieceTag,
+        }
+    }
+}
+
 pub(super) fn piece_creator(
     mut events: EventReader<PieceCreateEvent>,
     mut commands: Commands,
@@ -80,8 +93,8 @@ pub(super) fn piece_creator(
     piece_properties: Res<PieceProperties>,
 ) {
     for event in events.iter() {
-        let sprite_sheet_index = (event.piece_type() as u8) + 6 * (event.color() as u8);
-        let (x, y) = board_properties.position_to_transform(*event.position());
+        let sprite_sheet_index = (*event.piece_type() as u8) + 6 * (*event.color() as u8);
+        let (x, y) = board_properties.position_to_transform(event.position());
         let sprite = SpriteSheetBundle {
             sprite: TextureAtlasSprite::new(sprite_sheet_index.into()),
             texture_atlas: piece_properties.texture_atlas_handle.clone(),
@@ -89,14 +102,7 @@ pub(super) fn piece_creator(
                 .with_scale(Vec3::splat(piece_properties.sprite_scale)),
             ..default()
         };
-        commands.spawn(PieceBundle {
-            dragging: Dragging(false),
-            position: *event.position(),
-            sprite,
-            color: event.color(),
-            starting_position: StartingPosition(*event.position()),
-            tag: PieceTag,
-        });
+        commands.spawn(PieceBundle::new(*event.position(), sprite, *event.color()));
     }
 }
 
@@ -125,7 +131,7 @@ pub(super) fn piece_click_handler(
                                 &board,
                             );
                             // When the button is released move the piece to that square if it is a valid move
-                            if board.valid_move(&potential_move, board.active_color(), true) {
+                            if board.valid_move(&potential_move, board.active_color(), &true) {
                                 let event = PieceMoveEvent::new(potential_move);
                                 piece_move_event.send(event);
                             }
@@ -156,19 +162,19 @@ pub(super) fn piece_mover(
     for event in piece_move_events.iter() {
         // Remove any piece that is already there
         for (entity, position, _transform) in query.iter() {
-            if event.piece_move().to() == *position {
+            if *event.piece_move().to() == *position {
                 commands.entity(entity).despawn();
             }
         }
         // Move the piece
         for (_entity, mut position, mut transform) in query.iter_mut() {
-            if *position == event.piece_move().from() {
+            if *position == *event.piece_move().from() {
                 // Change its transform
                 let new_transform = board_properties.position_to_transform(event.piece_move().to());
                 *transform =
                     transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
                 // Change its position
-                *position = event.piece_move().to();
+                *position = *event.piece_move().to();
             }
         }
     }
@@ -217,7 +223,7 @@ pub(super) fn piece_dragger(
     {
         for (dragging, mut transform, piece_color) in query.iter_mut() {
             // If this piece is being dragged and is the current active color
-            if dragging.0 && board.active_color() == *piece_color {
+            if dragging.0 && board.active_color() == piece_color {
                 // Move this piece to follow the mouse
                 *transform = transform.with_translation(Vec3::new(
                     world_position[0],
@@ -240,7 +246,7 @@ pub(super) fn piece_undragger(
         // If this piece has stopped being dragged, change its transform to the correct position
         if !dragging.0 {
             // Change its transform
-            let new_transform = board_properties.position_to_transform(*position);
+            let new_transform = board_properties.position_to_transform(position);
             *transform =
                 transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
         }

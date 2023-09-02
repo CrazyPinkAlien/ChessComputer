@@ -34,12 +34,12 @@ impl Move {
         }
     }
 
-    pub fn from(&self) -> BoardPosition {
-        self.from
+    pub fn from(&self) -> &BoardPosition {
+        &self.from
     }
 
-    pub fn to(&self) -> BoardPosition {
-        self.to
+    pub fn to(&self) -> &BoardPosition {
+        &self.to
     }
 
     pub fn as_algebraic(&self) -> String {
