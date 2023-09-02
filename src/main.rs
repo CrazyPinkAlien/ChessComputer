@@ -1,4 +1,5 @@
 use bevy::app::App;
+use bevy::prelude::States;
 use bevy::winit::WinitSettings;
 use bevy::DefaultPlugins;
 
@@ -15,5 +16,13 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins((ChessBoardPlugin, UIPlugin))
         .insert_resource(WinitSettings::desktop_app())
+        .add_state::<AppState>()
         .run();
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, States, Default)]
+enum AppState {
+    #[default]
+    InGame,
+    GameEnd,
 }

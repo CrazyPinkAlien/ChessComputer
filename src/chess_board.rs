@@ -1,11 +1,12 @@
 use bevy::app::App;
 use bevy::prelude::{
-    Component, Event, EventReader, EventWriter, Plugin, PreUpdate, Res, ResMut, Resource, Startup,
-    Update,
+    Component, Event, EventReader, EventWriter, NextState, OnEnter, Plugin, PreUpdate, ResMut,
+    Resource, Update,
 };
 use strum_macros::EnumIter;
 
 use crate::fen::Fen;
+use crate::AppState::{self, InGame};
 
 use self::r#move::Move;
 
@@ -19,12 +20,14 @@ pub(super) struct ChessBoardPlugin;
 impl Plugin for ChessBoardPlugin {
     #[cfg(not(tarpaulin_include))]
     fn build(&self, app: &mut App) {
+        use bevy::prelude::{in_state, IntoSystemConfigs};
+
         app.add_event::<ResetBoardEvent>()
             .add_event::<PieceMoveEvent>()
             .add_event::<PieceCreateEvent>()
             .init_resource::<ChessBoard>()
-            .add_systems(Startup, setup)
-            .add_systems(PreUpdate, make_move)
+            .add_systems(OnEnter(InGame), setup)
+            .add_systems(PreUpdate, make_move.run_if(in_state(InGame)))
             .add_systems(Update, (reset_board_state, game_end_checker));
     }
 }
@@ -49,7 +52,7 @@ pub enum PieceType {
 pub enum GameEndStatus {
     Checkmate,
     Resignation,
-    Draw,
+    Stalemate,
     DeadPosition,
     FlagFall,
 }
@@ -211,12 +214,12 @@ impl ChessBoard {
         &self.active_color
     }
 
-    pub fn past_moves(&self) -> &Vec<Move> {
-        &self.past_moves
-    }
-
     pub fn move_number(&self) -> &i32 {
         &self.move_number
+    }
+
+    pub fn game_end_status(&self) -> &Option<GameEndStatus> {
+        &self.game_end_status
     }
 
     pub fn valid_move(
@@ -405,11 +408,37 @@ fn reset_board_state(
     }
 }
 
-fn game_end_checker(board: Res<ChessBoard>) {}
+fn game_end_checker(
+    mut board: ResMut<ChessBoard>,
+    mut events: EventReader<PieceMoveEvent>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    for _event in events.iter() {
+        // Check for checkmate or stalemate
+        if board
+            .get_valid_moves(board.active_color(), &true)
+            .is_empty()
+        {
+            if board.in_check(board.active_color()) {
+                // Checkmate
+                board.game_end_status = Some(GameEndStatus::Checkmate);
+                board.winner = match board.active_color() {
+                    PieceColor::Black => Some(PieceColor::White),
+                    PieceColor::White => Some(PieceColor::Black),
+                };
+                next_state.0 = Some(AppState::GameEnd);
+            } else {
+                // Stalemate
+                board.game_end_status = Some(GameEndStatus::Stalemate);
+                next_state.0 = Some(AppState::GameEnd);
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use bevy::prelude::Events;
+    use bevy::prelude::{Events, Startup};
 
     use super::*;
 
@@ -430,7 +459,7 @@ mod tests {
         let empty_board = ChessBoard::empty_board();
 
         assert_eq!(*empty_board.active_color(), PieceColor::White);
-        assert_eq!(empty_board.past_moves().len(), 0);
+        assert_eq!(empty_board.past_moves.len(), 0);
         assert_eq!(*empty_board.move_number(), 0);
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
@@ -558,7 +587,7 @@ mod tests {
             app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
-                .past_moves()
+                .past_moves
                 .len(),
             0
         );
@@ -1306,7 +1335,7 @@ mod tests {
             app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
-                .past_moves()
+                .past_moves
                 .len(),
             0
         );
@@ -1402,7 +1431,7 @@ mod tests {
             PieceColor::White
         );
         assert_eq!(
-            app.world.get_resource::<ChessBoard>().unwrap().past_moves(),
+            &app.world.get_resource::<ChessBoard>().unwrap().past_moves,
             &vec![Move::new(move_from, move_to, PieceType::Pawn, true)]
         );
         assert_eq!(
@@ -1450,7 +1479,7 @@ mod tests {
             PieceColor::Black
         );
         assert_eq!(
-            app.world.get_resource::<ChessBoard>().unwrap().past_moves(),
+            &app.world.get_resource::<ChessBoard>().unwrap().past_moves,
             &vec![
                 Move::new(
                     BoardPosition::new(2, 5),
@@ -1589,7 +1618,7 @@ mod tests {
             app.world
                 .get_resource::<ChessBoard>()
                 .unwrap()
-                .past_moves()
+                .past_moves
                 .len(),
             0
         );

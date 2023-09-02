@@ -1,8 +1,9 @@
 use bevy::app::{App, Plugin};
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{
-    default, AssetServer, BuildChildren, ButtonBundle, Camera, Camera2dBundle, Changed, Color,
-    Commands, Component, Event, EventReader, EventWriter, GlobalTransform, NodeBundle, Query, Res,
+    default, in_state, AssetServer, BuildChildren, ButtonBundle, Camera, Camera2dBundle, Changed,
+    Color, Commands, Component, Event, EventReader, EventWriter, GlobalTransform,
+    IntoSystemConfigs, NextState, NodeBundle, OnEnter, OnExit, PostUpdate, Query, Res, ResMut,
     Startup, TextBundle, Update, With,
 };
 use bevy::text::{Text, TextStyle};
@@ -11,8 +12,11 @@ use bevy::ui::{
 };
 use bevy::window::Window;
 
-use crate::chess_board::{BoardPosition, ChessBoard, PieceColor, PieceMoveEvent, ResetBoardEvent};
+use crate::chess_board::{
+    BoardPosition, ChessBoard, GameEndStatus, PieceColor, PieceMoveEvent, ResetBoardEvent,
+};
 use crate::fen::Fen;
+use crate::AppState;
 
 mod board;
 mod piece;
@@ -28,8 +32,6 @@ pub(super) struct UIPlugin;
 impl Plugin for UIPlugin {
     #[cfg(not(tarpaulin_include))]
     fn build(&self, app: &mut App) {
-        use bevy::prelude::PostUpdate;
-
         app.init_resource::<piece::PieceProperties>()
             .init_resource::<board::BoardProperties>()
             .add_event::<BoardClickEvent>()
@@ -38,9 +40,14 @@ impl Plugin for UIPlugin {
                 Update,
                 (
                     reset_board_button,
-                    mouse_event_handler,
                     reset_past_moves_text,
                     piece::piece_creator,
+                ),
+            )
+            .add_systems(
+                Update,
+                (
+                    mouse_event_handler,
                     piece::piece_click_handler,
                     piece::piece_move_audio,
                     piece::piece_dragger,
@@ -48,9 +55,15 @@ impl Plugin for UIPlugin {
                     piece::piece_mover,
                     piece::piece_resetter,
                     board::highlight_valid_squares,
-                ),
+                )
+                    .distributive_run_if(in_state(AppState::InGame)),
             )
-            .add_systems(PostUpdate, past_moves_text);
+            .add_systems(
+                PostUpdate,
+                past_moves_text.run_if(in_state(AppState::InGame)),
+            )
+            .add_systems(OnEnter(AppState::GameEnd), update_game_end_text)
+            .add_systems(OnExit(AppState::GameEnd), reset_game_end_text);
     }
 }
 
@@ -63,15 +76,18 @@ struct ResetBoardButton;
 #[derive(Component)]
 struct PastMovesText;
 
+#[derive(Component)]
+struct GameEndText;
+
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     commands.spawn((Camera2dBundle::default(), MainCamera));
-
     commands
         // Top level flex box
         .spawn(NodeBundle {
             style: Style {
                 width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 align_items: AlignItems::FlexStart,
                 justify_content: JustifyContent::SpaceBetween,
                 margin: UiRect {
@@ -159,6 +175,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ),
                         PastMovesText,
                     ));
+
+                    // Game end status
+                    parent.spawn((
+                        TextBundle::from_section(
+                            "gffg",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: TEXT_SIZE - 4.0,
+                                color: TEXT_COLOR,
+                            },
+                        ),
+                        GameEndText,
+                    ));
                 });
         });
 }
@@ -203,6 +232,7 @@ fn reset_board_button(
         (Changed<Interaction>, With<ResetBoardButton>),
     >,
     mut setup_event: EventWriter<ResetBoardEvent>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
@@ -218,6 +248,7 @@ fn reset_board_button(
             }
         }
     }
+    next_state.0 = Some(AppState::InGame);
 }
 
 fn past_moves_text(
@@ -250,6 +281,23 @@ fn reset_past_moves_text(
         let mut text = query.single_mut();
         text.sections[0].value = "".to_owned();
     }
+}
+
+fn update_game_end_text(mut query: Query<&mut Text, With<GameEndText>>, board: Res<ChessBoard>) {
+    let mut text = query.single_mut();
+    text.sections[0].value = match board.game_end_status().unwrap() {
+        GameEndStatus::Checkmate => "Checkmate",
+        GameEndStatus::Resignation => "Resignation",
+        GameEndStatus::Stalemate => "Stalemate",
+        GameEndStatus::DeadPosition => "Dead Position",
+        GameEndStatus::FlagFall => "Flag Fall",
+    }
+    .to_owned();
+}
+
+fn reset_game_end_text(mut query: Query<&mut Text, With<GameEndText>>) {
+    let mut text = query.single_mut();
+    text.sections[0].value = "".to_owned();
 }
 
 #[cfg(test)]
