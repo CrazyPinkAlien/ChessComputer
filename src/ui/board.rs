@@ -27,8 +27,8 @@ impl BoardProperties {
     }
 
     pub(super) fn transform_to_position(&self, transform: &Vec2) -> Option<BoardPosition> {
-        let file = ((transform[0] - self.center.x) / self.square_size + 4.0).round() as i32;
-        let rank = (-1.0 * (transform[1] - self.center.y) / self.square_size + 4.0).round() as i32;
+        let file = ((transform[0] - self.center.x - self.square_size/2.0) / self.square_size + 4.0).round() as i32;
+        let rank = (-1.0 * (transform[1] - self.center.y + self.square_size/2.0) / self.square_size + 4.0).round() as i32;
         if !(0..=7).contains(&rank) || !(0..=7).contains(&file) {
             None
         } else {
