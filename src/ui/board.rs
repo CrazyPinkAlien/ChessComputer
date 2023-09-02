@@ -21,8 +21,8 @@ pub(super) struct BoardProperties {
 
 impl BoardProperties {
     pub(super) fn position_to_transform(&self, position: &BoardPosition) -> (f32, f32) {
-        let x = (*position.file() as f32 - 4.0) * self.square_size + self.center.x;
-        let y = -1.0 * (*position.rank() as f32 - 4.0) * self.square_size + self.center.y;
+        let x = (*position.file() as f32 - 4.0) * self.square_size + self.center.x + self.square_size/2.0;
+        let y = -1.0 * (*position.rank() as f32 - 4.0) * self.square_size + self.center.y - self.square_size/2.0;
         (x, y)
     }
 
