@@ -46,6 +46,15 @@ impl PieceColor {
     }
 }
 
+impl ToString for PieceColor {
+    fn to_string(&self) -> String {
+        match self {
+            PieceColor::White => "White".to_string(),
+            PieceColor::Black => "Black".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq)]
 pub enum PieceType {
     King,
@@ -228,6 +237,10 @@ impl ChessBoard {
 
     pub fn game_end_status(&self) -> &Option<GameEndStatus> {
         &self.game_end_status
+    }
+
+    pub fn winner(&self) -> &Option<PieceColor> {
+        &self.winner
     }
 
     pub fn valid_move(

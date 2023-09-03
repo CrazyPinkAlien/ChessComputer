@@ -1,14 +1,17 @@
+use bevy::a11y::accesskit::{NodeBuilder, Role};
+use bevy::a11y::AccessibilityNode;
 use bevy::app::{App, Plugin};
-use bevy::input::mouse::MouseButtonInput;
+use bevy::input::mouse::{MouseButtonInput, MouseScrollUnit, MouseWheel};
 use bevy::prelude::{
     default, in_state, AssetServer, BuildChildren, ButtonBundle, Camera, Camera2dBundle, Changed,
     Color, Commands, Component, Event, EventReader, EventWriter, GlobalTransform,
-    IntoSystemConfigs, NextState, NodeBundle, OnEnter, OnExit, PostUpdate, Query, Res, ResMut,
-    Startup, TextBundle, Update, With,
+    IntoSystemConfigs, NextState, NodeBundle, OnEnter, OnExit, Parent, PostUpdate, Query, Res,
+    ResMut, Startup, TextBundle, Update, With,
 };
 use bevy::text::{Text, TextStyle};
 use bevy::ui::{
-    AlignItems, BackgroundColor, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val,
+    AlignItems, AlignSelf, BackgroundColor, FlexDirection, Interaction, JustifyContent, Node,
+    Overflow, Style, UiRect, Val,
 };
 use bevy::window::Window;
 
@@ -41,6 +44,7 @@ impl Plugin for UIPlugin {
                 (
                     reset_board_button,
                     reset_past_moves_text,
+                    mouse_scroll,
                     piece::piece_undragger,
                 ),
             )
@@ -78,6 +82,11 @@ struct PastMovesText;
 
 #[derive(Component)]
 struct GameEndText;
+
+#[derive(Component, Default)]
+struct ScrollingList {
+    position: f32,
+}
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
@@ -146,8 +155,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .spawn(NodeBundle {
                     style: Style {
                         flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::FlexStart,
-                        justify_content: JustifyContent::FlexEnd,
+                        align_items: AlignItems::Stretch,
+                        justify_content: JustifyContent::FlexStart,
+                        min_height: Val::Percent(100.),
                         ..default()
                     },
                     ..Default::default()
@@ -164,17 +174,49 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
 
                     // Past moves list
-                    parent.spawn((
-                        TextBundle::from_section(
-                            "",
-                            TextStyle {
-                                font: font.clone(),
-                                font_size: TEXT_SIZE - 4.0,
-                                color: TEXT_COLOR,
+                    // List with hidden overflow
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                flex_direction: FlexDirection::Column,
+                                align_self: AlignSelf::Stretch,
+                                min_height: Val::Percent(70.),
+                                max_height: Val::Percent(70.),
+                                overflow: Overflow::clip_y(),
+                                ..default()
                             },
-                        ),
-                        PastMovesText,
-                    ));
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            // Moving panel
+                            parent
+                                .spawn((
+                                    NodeBundle {
+                                        style: Style {
+                                            flex_direction: FlexDirection::Column,
+                                            align_items: AlignItems::FlexStart,
+                                            ..default()
+                                        },
+                                        ..Default::default()
+                                    },
+                                    ScrollingList::default(),
+                                    AccessibilityNode(NodeBuilder::new(Role::List)),
+                                ))
+                                .with_children(|parent| {
+                                    parent.spawn((
+                                        // List items
+                                        TextBundle::from_section(
+                                            "",
+                                            TextStyle {
+                                                font: font.clone(),
+                                                font_size: TEXT_SIZE - 4.0,
+                                                color: TEXT_COLOR,
+                                            },
+                                        ),
+                                        PastMovesText,
+                                    ));
+                                });
+                        });
 
                     // Game end status
                     parent.spawn((
@@ -285,19 +327,51 @@ fn reset_past_moves_text(
 
 fn update_game_end_text(mut query: Query<&mut Text, With<GameEndText>>, board: Res<ChessBoard>) {
     let mut text = query.single_mut();
-    text.sections[0].value = match board.game_end_status().unwrap() {
+    let mut game_end_text = String::new();
+    game_end_text.push_str(match board.game_end_status().unwrap() {
         GameEndStatus::Checkmate => "Checkmate",
         GameEndStatus::Resignation => "Resignation",
         GameEndStatus::Stalemate => "Stalemate",
         GameEndStatus::DeadPosition => "Dead Position",
         GameEndStatus::FlagFall => "Flag Fall",
-    }
-    .to_owned();
+    });
+    game_end_text.push('\n');
+    game_end_text.push_str("Winner: ");
+    let winner_text = match board.winner() {
+        Some(x) => x.to_string(),
+        None => "Draw".to_string(),
+    };
+    game_end_text.push_str(&winner_text);
+    text.sections[0].value = game_end_text.to_owned();
 }
 
 fn reset_game_end_text(mut query: Query<&mut Text, With<GameEndText>>) {
     let mut text = query.single_mut();
     text.sections[0].value = "".to_owned();
+}
+
+fn mouse_scroll(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut query_list: Query<(&mut ScrollingList, &mut Style, &Parent, &Node)>,
+    query_node: Query<&Node>,
+) {
+    for mouse_wheel_event in mouse_wheel_events.iter() {
+        for (mut scrolling_list, mut style, parent, list_node) in &mut query_list {
+            let items_height = list_node.size().y;
+            let container_height = query_node.get(parent.get()).unwrap().size().y;
+
+            let max_scroll = (items_height - container_height).max(0.);
+
+            let dy = match mouse_wheel_event.unit {
+                MouseScrollUnit::Line => mouse_wheel_event.y * 20.,
+                MouseScrollUnit::Pixel => mouse_wheel_event.y,
+            };
+
+            scrolling_list.position += dy;
+            scrolling_list.position = scrolling_list.position.clamp(-max_scroll, 0.);
+            style.top = Val::Px(scrolling_list.position);
+        }
+    }
 }
 
 #[cfg(test)]
