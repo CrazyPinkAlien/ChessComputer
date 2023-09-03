@@ -179,7 +179,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     // Game end status
                     parent.spawn((
                         TextBundle::from_section(
-                            "gffg",
+                            "",
                             TextStyle {
                                 font: font.clone(),
                                 font_size: TEXT_SIZE - 4.0,
