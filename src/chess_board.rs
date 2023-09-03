@@ -1,7 +1,7 @@
 use bevy::app::App;
 use bevy::prelude::{
-    Component, Event, EventReader, EventWriter, NextState, OnEnter, Plugin, PreUpdate, ResMut,
-    Resource, Update,
+    in_state, Component, Event, EventReader, EventWriter, IntoSystemConfigs, NextState, Plugin,
+    PreUpdate, ResMut, Resource, Startup, Update,
 };
 use strum_macros::EnumIter;
 
@@ -20,15 +20,14 @@ pub(super) struct ChessBoardPlugin;
 impl Plugin for ChessBoardPlugin {
     #[cfg(not(tarpaulin_include))]
     fn build(&self, app: &mut App) {
-        use bevy::prelude::{in_state, IntoSystemConfigs};
-
         app.add_event::<ResetBoardEvent>()
             .add_event::<PieceMoveEvent>()
             .add_event::<PieceCreateEvent>()
             .init_resource::<ChessBoard>()
-            .add_systems(OnEnter(InGame), setup)
+            .add_systems(Startup, setup)
             .add_systems(PreUpdate, make_move.run_if(in_state(InGame)))
-            .add_systems(Update, (reset_board_state, game_end_checker));
+            .add_systems(Update, game_end_checker.run_if(in_state(AppState::InGame)))
+            .add_systems(Update, reset_board_state);
     }
 }
 
@@ -426,12 +425,12 @@ fn game_end_checker(
                     PieceColor::Black => Some(PieceColor::White),
                     PieceColor::White => Some(PieceColor::Black),
                 };
-                next_state.0 = Some(AppState::GameEnd);
             } else {
                 // Stalemate
                 board.game_end_status = Some(GameEndStatus::Stalemate);
-                next_state.0 = Some(AppState::GameEnd);
             }
+            // The game has ended, set the state.
+            next_state.set(AppState::GameEnd);
         }
     }
 }

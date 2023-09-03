@@ -41,17 +41,17 @@ impl Plugin for UIPlugin {
                 (
                     reset_board_button,
                     reset_past_moves_text,
-                    piece::piece_creator,
+                    piece::piece_undragger,
                 ),
             )
             .add_systems(
                 Update,
                 (
                     mouse_event_handler,
+                    piece::piece_creator,
                     piece::piece_click_handler,
                     piece::piece_move_audio,
                     piece::piece_dragger,
-                    piece::piece_undragger,
                     piece::piece_mover,
                     piece::piece_resetter,
                     board::highlight_valid_squares,
@@ -238,6 +238,7 @@ fn reset_board_button(
         match *interaction {
             Interaction::Pressed => {
                 setup_event.send(ResetBoardEvent::new(Fen::default()));
+                next_state.set(AppState::InGame);
                 *color = PRESSED_BUTTON.into();
             }
             Interaction::Hovered => {
@@ -248,7 +249,6 @@ fn reset_board_button(
             }
         }
     }
-    next_state.0 = Some(AppState::InGame);
 }
 
 fn past_moves_text(
