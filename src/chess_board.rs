@@ -37,6 +37,15 @@ pub enum PieceColor {
     Black,
 }
 
+impl PieceColor {
+    fn opposite(&self) -> PieceColor {
+        match self {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, EnumIter, PartialEq, Eq)]
 pub enum PieceType {
     King,
@@ -340,13 +349,8 @@ impl ChessBoard {
                 }
             }
         }
-        // Get the opponent color
-        let opponent_color = match color {
-            PieceColor::White => PieceColor::Black,
-            PieceColor::Black => PieceColor::White,
-        };
         // Get valid moves
-        let moves = self.get_valid_moves(&opponent_color, &false);
+        let moves = self.get_valid_moves(&color.opposite(), &false);
         // Check if any valid moves can take the king
         for piece_move in moves {
             if *piece_move.to() == king_location {
@@ -382,10 +386,7 @@ fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<Che
         board.move_piece(event.piece_move());
 
         // Change the active color
-        board.active_color = match board.active_color {
-            PieceColor::Black => PieceColor::White,
-            PieceColor::White => PieceColor::Black,
-        };
+        board.active_color = board.active_color.opposite();
 
         // Make a record of the move
         board.past_moves.push(*event.piece_move());
@@ -421,10 +422,7 @@ fn game_end_checker(
             if board.in_check(board.active_color()) {
                 // Checkmate
                 board.game_end_status = Some(GameEndStatus::Checkmate);
-                board.winner = match board.active_color() {
-                    PieceColor::Black => Some(PieceColor::White),
-                    PieceColor::White => Some(PieceColor::Black),
-                };
+                board.winner = Some(board.active_color().opposite());
             } else {
                 // Stalemate
                 board.game_end_status = Some(GameEndStatus::Stalemate);
