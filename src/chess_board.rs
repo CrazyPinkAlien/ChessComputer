@@ -171,7 +171,7 @@ impl ChessBoard {
             board,
             active_color: PieceColor::White,
             past_moves: Vec::new(),
-            move_number: 0,
+            move_number: 1,
             winner: None,
             game_end_status: None,
         }
@@ -470,7 +470,7 @@ mod tests {
 
         assert_eq!(*empty_board.active_color(), PieceColor::White);
         assert_eq!(empty_board.past_moves.len(), 0);
-        assert_eq!(*empty_board.move_number(), 0);
+        assert_eq!(*empty_board.move_number(), 1);
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
                 assert!(empty_board.board[rank][file].is_none());
