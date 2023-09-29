@@ -231,6 +231,10 @@ impl ChessBoard {
         &self.active_color
     }
 
+    pub fn past_moves(&self) -> &Vec<Move> {
+        &self.past_moves
+    }
+
     pub fn move_number(&self) -> &i32 {
         &self.move_number
     }
