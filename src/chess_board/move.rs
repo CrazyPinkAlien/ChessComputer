@@ -53,20 +53,27 @@ impl Move {
             PieceType::Pawn => "",
         });
         if self.is_capture {
+            if self.piece_type == PieceType::Pawn {
+                algebraic.push_str(&Self::file_to_string(self.from.file));
+            }
             algebraic.push('x');
         }
-        algebraic.push_str(match self.to.file {
-            0 => "a",
-            1 => "b",
-            2 => "c",
-            3 => "d",
-            4 => "e",
-            5 => "f",
-            6 => "g",
-            7 => "h",
-            _ => panic!("Unexpected rank for moved piece: {}", self.to.file),
-        });
+        algebraic.push_str(&Self::file_to_string(self.to.file));
         algebraic += &(8 - self.to.rank).to_string();
         algebraic
+    }
+
+    fn file_to_string(file: usize) -> String {
+        match file {
+            0 => "a".to_string(),
+            1 => "b".to_string(),
+            2 => "c".to_string(),
+            3 => "d".to_string(),
+            4 => "e".to_string(),
+            5 => "f".to_string(),
+            6 => "g".to_string(),
+            7 => "h".to_string(),
+            _ => panic!("Unexpected file for moved piece: {}", file),
+        }
     }
 }
