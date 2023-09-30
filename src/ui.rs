@@ -80,6 +80,7 @@ fn ui_system(
             egui::ScrollArea::vertical()
                 .auto_shrink([false; 2])
                 .stick_to_bottom(true)
+                .max_height(ui.available_height() * 4.0 / 5.0)
                 .show_rows(ui, row_height, total_rows, |ui, row_range| {
                     for row in row_range {
                         let white_move = board.past_moves()[row * 2].as_algebraic();
