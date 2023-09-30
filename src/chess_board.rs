@@ -1,12 +1,11 @@
 use bevy::app::App;
 use bevy::prelude::{
-    in_state, Component, Event, EventReader, EventWriter, IntoSystemConfigs, NextState, Plugin,
-    PreUpdate, ResMut, Resource, Startup, Update,
+    Component, Event, EventReader, EventWriter, Plugin, PostUpdate, PreUpdate, ResMut, Resource,
+    Startup, Update,
 };
 use strum_macros::EnumIter;
 
 use crate::fen::Fen;
-use crate::AppState::{self, InGame};
 
 use self::r#move::Move;
 
@@ -25,9 +24,9 @@ impl Plugin for ChessBoardPlugin {
             .add_event::<PieceCreateEvent>()
             .init_resource::<ChessBoard>()
             .add_systems(Startup, setup)
-            .add_systems(PreUpdate, make_move.run_if(in_state(InGame)))
-            .add_systems(Update, game_end_checker.run_if(in_state(AppState::InGame)))
-            .add_systems(Update, reset_board_state);
+            .add_systems(PreUpdate, game_end_checker)
+            .add_systems(Update, reset_board_state)
+            .add_systems(PostUpdate, make_move);
     }
 }
 
@@ -151,7 +150,7 @@ impl PieceCreateEvent {
 #[derive(Resource, Clone)]
 pub struct ChessBoard {
     board: [[Option<Box<dyn piece::Piece>>; 8]; 8],
-    active_color: PieceColor,
+    active_color: Option<PieceColor>,
     past_moves: Vec<Move>,
     move_number: i32,
     winner: Option<PieceColor>,
@@ -169,7 +168,7 @@ impl ChessBoard {
         let board: [[Option<Box<dyn piece::Piece>>; 8]; 8] = Default::default();
         ChessBoard {
             board,
-            active_color: PieceColor::White,
+            active_color: None,
             past_moves: Vec::new(),
             move_number: 1,
             winner: None,
@@ -218,8 +217,8 @@ impl ChessBoard {
         }
         // Set active color
         board_state.active_color = match fen.active_color().as_str() {
-            "w" => PieceColor::White,
-            "b" => PieceColor::Black,
+            "w" => Some(PieceColor::White),
+            "b" => Some(PieceColor::Black),
             _ => panic!("Unrecognised active color in FEN: {}", fen.active_color()),
         };
         // Set move number
@@ -227,7 +226,7 @@ impl ChessBoard {
         board_state
     }
 
-    pub fn active_color(&self) -> &PieceColor {
+    pub fn active_color(&self) -> &Option<PieceColor> {
         &self.active_color
     }
 
@@ -250,7 +249,7 @@ impl ChessBoard {
     pub fn valid_move(
         &self,
         piece_move: &Move,
-        active_color: &PieceColor,
+        active_color: &Option<PieceColor>,
         check_for_check: &bool,
     ) -> bool {
         // Get piece
@@ -261,8 +260,10 @@ impl ChessBoard {
             .as_ref()
             .unwrap();
 
+        // Check that there is an active colour
+        active_color.is_some()
         // Check that the piece is the active colour
-        (piece.get_color() == active_color)
+        && (*piece.get_color() == active_color.unwrap())
         // Check whether or not there are any pieces there
         && match self.get_piece_color(piece_move.to()) {
             Some(color) => if color == *piece.get_color() {
@@ -282,11 +283,15 @@ impl ChessBoard {
         ||{
                 let mut test_board = self.clone();
                 test_board.move_piece(piece_move);
-                !test_board.in_check(active_color)
+                !test_board.in_check(&active_color.unwrap())
             })
     }
 
-    pub fn get_valid_moves(&self, active_color: &PieceColor, check_for_check: &bool) -> Vec<Move> {
+    pub fn get_valid_moves(
+        &self,
+        active_color: &Option<PieceColor>,
+        check_for_check: &bool,
+    ) -> Vec<Move> {
         let mut moves = Vec::new();
         for rank in 0..BOARD_SIZE {
             for file in 0..BOARD_SIZE {
@@ -367,7 +372,7 @@ impl ChessBoard {
             }
         }
         // Get valid moves
-        let moves = self.get_valid_moves(&color.opposite(), &false);
+        let moves = self.get_valid_moves(&Some(color.opposite()), &false);
         // Check if any valid moves can take the king
         for piece_move in moves {
             if *piece_move.to() == king_location {
@@ -403,13 +408,13 @@ fn make_move(mut move_events: EventReader<PieceMoveEvent>, mut board: ResMut<Che
         board.move_piece(event.piece_move());
 
         // Change the active color
-        board.active_color = board.active_color.opposite();
+        board.active_color = Some(board.active_color.unwrap().opposite());
 
         // Make a record of the move
         board.past_moves.push(*event.piece_move());
 
         // Increment the move number if it is now white's turn
-        if board.active_color == PieceColor::White {
+        if board.active_color == Some(PieceColor::White) {
             board.move_number += 1;
         }
     }
@@ -425,27 +430,24 @@ fn reset_board_state(
     }
 }
 
-fn game_end_checker(
-    mut board: ResMut<ChessBoard>,
-    mut events: EventReader<PieceMoveEvent>,
-    mut next_state: ResMut<NextState<AppState>>,
-) {
+fn game_end_checker(mut board: ResMut<ChessBoard>, mut events: EventReader<PieceMoveEvent>) {
     for _event in events.iter() {
         // Check for checkmate or stalemate
-        if board
-            .get_valid_moves(board.active_color(), &true)
-            .is_empty()
+        if board.active_color().is_some()
+            && board
+                .get_valid_moves(board.active_color(), &true)
+                .is_empty()
         {
-            if board.in_check(board.active_color()) {
+            if board.in_check(&board.active_color().unwrap()) {
                 // Checkmate
                 board.game_end_status = Some(GameEndStatus::Checkmate);
-                board.winner = Some(board.active_color().opposite());
+                board.winner = Some(board.active_color().unwrap().opposite());
             } else {
                 // Stalemate
                 board.game_end_status = Some(GameEndStatus::Stalemate);
             }
-            // The game has ended, set the state.
-            next_state.set(AppState::GameEnd);
+            // The game has ended, set the active color to None.
+            board.active_color = None;
         }
     }
 }
@@ -472,7 +474,7 @@ mod tests {
     fn test_chess_board_empty_board() {
         let empty_board = ChessBoard::empty_board();
 
-        assert_eq!(*empty_board.active_color(), PieceColor::White);
+        assert_eq!(*empty_board.active_color(), None);
         assert_eq!(empty_board.past_moves.len(), 0);
         assert_eq!(*empty_board.move_number(), 1);
         for rank in 0..BOARD_SIZE {
@@ -593,7 +595,7 @@ mod tests {
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
-            PieceColor::Black
+            Some(PieceColor::Black)
         );
 
         // Check past moves
@@ -1341,7 +1343,7 @@ mod tests {
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
-            PieceColor::White
+            Some(PieceColor::White)
         );
 
         // Check past moves
@@ -1427,7 +1429,7 @@ mod tests {
         let board = &app.world.get_resource::<ChessBoard>().unwrap().board;
         assert_eq!(
             app.world.get_resource::<ChessBoard>().unwrap().active_color,
-            PieceColor::White
+            Some(PieceColor::White)
         );
         assert!(board[3][6].is_some());
         assert_eq!(
@@ -1442,7 +1444,7 @@ mod tests {
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
-            PieceColor::White
+            Some(PieceColor::White)
         );
         assert_eq!(
             &app.world.get_resource::<ChessBoard>().unwrap().past_moves,
@@ -1475,7 +1477,7 @@ mod tests {
         let board = &app.world.get_resource::<ChessBoard>().unwrap().board;
         assert_eq!(
             app.world.get_resource::<ChessBoard>().unwrap().active_color,
-            PieceColor::Black
+            Some(PieceColor::Black)
         );
         assert!(board[3][6].is_some());
         assert_eq!(
@@ -1490,7 +1492,7 @@ mod tests {
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
-            PieceColor::Black
+            Some(PieceColor::Black)
         );
         assert_eq!(
             &app.world.get_resource::<ChessBoard>().unwrap().past_moves,
@@ -1624,7 +1626,7 @@ mod tests {
                 .get_resource::<ChessBoard>()
                 .unwrap()
                 .active_color(),
-            PieceColor::Black
+            Some(PieceColor::Black)
         );
 
         // Check past moves

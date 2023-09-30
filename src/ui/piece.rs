@@ -223,7 +223,10 @@ pub(super) fn piece_dragger(
     {
         for (dragging, mut transform, piece_color) in query.iter_mut() {
             // If this piece is being dragged and is the current active color
-            if dragging.0 && board.active_color() == piece_color {
+            if dragging.0
+                && board.active_color().is_some()
+                && board.active_color().unwrap() == *piece_color
+            {
                 // Move this piece to follow the mouse
                 *transform = transform.with_translation(Vec3::new(
                     world_position[0],

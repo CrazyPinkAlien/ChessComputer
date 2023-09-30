@@ -1,15 +1,14 @@
 use bevy::app::{App, Plugin};
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::{
-    in_state, Camera, Camera2dBundle, Commands, Component, Event, EventReader, EventWriter,
-    GlobalTransform, IntoSystemConfigs, NextState, Query, Res, ResMut, Startup, Update, With,
+    Camera, Camera2dBundle, Commands, Component, Event, EventReader, EventWriter, GlobalTransform,
+    Query, Res, Startup, Update, With,
 };
 use bevy::window::Window;
 use bevy_egui::{egui, EguiContexts};
 
 use crate::chess_board::{BoardPosition, ChessBoard, GameEndStatus, ResetBoardEvent};
 use crate::fen::Fen;
-use crate::AppState;
 
 mod board;
 mod piece;
@@ -26,20 +25,20 @@ impl Plugin for UIPlugin {
             .init_resource::<board::BoardProperties>()
             .add_event::<BoardClickEvent>()
             .add_systems(Startup, (setup, board::setup))
-            .add_systems(Update, (ui_system, piece::piece_undragger))
             .add_systems(
                 Update,
                 (
                     mouse_event_handler,
-                    piece::piece_creator,
+                    ui_system,
                     piece::piece_click_handler,
+                    piece::piece_undragger,
+                    piece::piece_creator,
                     piece::piece_move_audio,
                     piece::piece_dragger,
                     piece::piece_mover,
                     piece::piece_resetter,
                     board::highlight_valid_squares,
-                )
-                    .distributive_run_if(in_state(AppState::InGame)),
+                ),
             );
     }
 }
@@ -54,7 +53,6 @@ fn setup(mut commands: Commands) {
 fn ui_system(
     mut contexts: EguiContexts,
     mut setup_event: EventWriter<ResetBoardEvent>,
-    mut next_state: ResMut<NextState<AppState>>,
     board: Res<ChessBoard>,
 ) {
     let ctx = contexts.ctx_mut();
@@ -64,7 +62,6 @@ fn ui_system(
             // Reset board button
             if ui.button("Reset Board").clicked() {
                 setup_event.send(ResetBoardEvent::new(Fen::default()));
-                next_state.set(AppState::InGame);
             }
         });
 
