@@ -1,6 +1,6 @@
 use bevy::prelude::Component;
 
-use crate::chess_board::BoardPosition;
+use crate::chess_board::{BoardPosition, BOARD_SIZE};
 
 use super::{Piece, PieceColor, PieceType};
 
@@ -9,7 +9,6 @@ pub(super) struct King {
     color: PieceColor,
     starting_position: BoardPosition,
     position: BoardPosition,
-    moved: bool,
 }
 
 impl King {
@@ -18,7 +17,6 @@ impl King {
             color,
             starting_position: position,
             position,
-            moved: false,
         })
     }
 }
@@ -36,11 +34,8 @@ impl Piece for King {
         &self.position
     }
 
-    fn set_position(&mut self, new_position: &BoardPosition, moved: bool) {
+    fn set_position(&mut self, new_position: &BoardPosition) {
         self.position = *new_position;
-        if moved {
-            self.moved = true;
-        }
     }
 
     fn get_moves(&self, _include_captures: &bool) -> Vec<BoardPosition> {
@@ -54,6 +49,21 @@ impl Piece for King {
                 {
                     moves.push(BoardPosition::new(rank, file));
                 }
+            }
+        }
+        // The king may also castle
+        if self.position == self.starting_position {
+            if self.position.file < BOARD_SIZE - 2 {
+                moves.push(BoardPosition::new(
+                    self.position.rank,
+                    self.position.file + 2,
+                ));
+            }
+            if self.position.file > 2 {
+                moves.push(BoardPosition::new(
+                    self.position.rank,
+                    self.position.file - 2,
+                ));
             }
         }
         moves

@@ -34,7 +34,7 @@ impl Piece for Queen {
         &self.position
     }
 
-    fn set_position(&mut self, new_position: &BoardPosition, _moved: bool) {
+    fn set_position(&mut self, new_position: &BoardPosition) {
         self.position = *new_position;
     }
 

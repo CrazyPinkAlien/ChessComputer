@@ -96,8 +96,8 @@ pub(super) fn highlight_valid_squares(
     for (piece_position, dragging) in piece_query.iter() {
         for (mut sprite, position, color) in square_query.iter_mut() {
             // Highlight the square if it's valid
-            let sprite_color = if *dragging.get()
-                && valid_moves.contains(&Move::new_from_board(*piece_position, *position, &board))
+            let sprite_color = if dragging.get()
+                && valid_moves.contains(&Move::from_board(*piece_position, *position, &board))
             {
                 match color.get() {
                     PieceColor::White => properties.highlight_color_white,

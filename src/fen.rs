@@ -2,6 +2,7 @@
 pub struct Fen {
     piece_placement: String,
     active_color: String,
+    castling_rights: String,
     move_number: i32,
 }
 
@@ -15,10 +16,13 @@ impl Fen {
         let piece_placement = split_fen[0];
         // Get active color
         let active_color = split_fen[1];
+        // Get castling rights
+        let castling_rights = split_fen[2];
         // Create Fen object
         Fen {
             piece_placement: piece_placement.to_string(),
             active_color: active_color.to_string(),
+            castling_rights: castling_rights.to_string(),
             move_number: split_fen[5].parse::<i32>().unwrap(),
         }
     }
@@ -29,6 +33,10 @@ impl Fen {
 
     pub fn active_color(&self) -> &String {
         &self.active_color
+    }
+
+    pub fn castling_rights(&self) -> &String {
+        &self.castling_rights
     }
 
     pub fn move_number(&self) -> &i32 {

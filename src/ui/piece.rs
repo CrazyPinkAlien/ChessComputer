@@ -9,7 +9,8 @@ use bevy::window::Window;
 
 use crate::chess_board::r#move::Move;
 use crate::chess_board::{
-    BoardPosition, ChessBoard, PieceColor, PieceCreateEvent, PieceMoveEvent, ResetBoardEvent,
+    BoardPosition, ChessBoard, PieceColor, PieceCreateEvent, PieceMoveEvent, RequestMoveEvent,
+    ResetBoardEvent,
 };
 
 use super::board::BoardProperties;
@@ -49,8 +50,8 @@ impl FromWorld for PieceProperties {
 pub(super) struct Dragging(bool);
 
 impl Dragging {
-    pub(super) fn get(&self) -> &bool {
-        &self.0
+    pub(super) fn get(&self) -> bool {
+        self.0
     }
 }
 
@@ -109,7 +110,7 @@ pub(super) fn piece_creator(
 pub(super) fn piece_click_handler(
     mut board_click_events: EventReader<BoardClickEvent>,
     mut query: Query<(&mut Dragging, &BoardPosition), With<PieceTag>>,
-    mut piece_move_event: EventWriter<PieceMoveEvent>,
+    mut piece_move_event: EventWriter<RequestMoveEvent>,
     board: Res<ChessBoard>,
 ) {
     for click in board_click_events.iter() {
@@ -125,14 +126,11 @@ pub(super) fn piece_click_handler(
                         }
                     } else if click.input.state == ButtonState::Released && dragging.0 {
                         if click.position.is_some() {
-                            let potential_move = Move::new_from_board(
-                                *piece_position,
-                                click.position.unwrap(),
-                                &board,
-                            );
+                            let potential_move =
+                                Move::from_board(*piece_position, click.position.unwrap(), &board);
                             // When the button is released move the piece to that square if it is a valid move
                             if board.valid_move(&potential_move, board.active_color(), &true) {
-                                let event = PieceMoveEvent::new(potential_move);
+                                let event = RequestMoveEvent::new(potential_move);
                                 piece_move_event.send(event);
                             }
                         }
@@ -162,19 +160,19 @@ pub(super) fn piece_mover(
     for event in piece_move_events.iter() {
         // Remove any piece that is already there
         for (entity, position, _transform) in query.iter() {
-            if *event.piece_move().to() == *position {
+            if *event.to() == *position {
                 commands.entity(entity).despawn();
             }
         }
         // Move the piece
         for (_entity, mut position, mut transform) in query.iter_mut() {
-            if *position == *event.piece_move().from() {
+            if *position == *event.from() {
                 // Change its transform
-                let new_transform = board_properties.position_to_transform(event.piece_move().to());
+                let new_transform = board_properties.position_to_transform(event.to());
                 *transform =
                     transform.with_translation(Vec3::new(new_transform.0, new_transform.1, 1.0));
                 // Change its position
-                *position = *event.piece_move().to();
+                *position = *event.to();
             }
         }
     }

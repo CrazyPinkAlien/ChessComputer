@@ -9,7 +9,6 @@ pub(super) struct Rook {
     color: PieceColor,
     starting_position: BoardPosition,
     position: BoardPosition,
-    moved: bool,
 }
 
 impl Rook {
@@ -18,7 +17,6 @@ impl Rook {
             color,
             starting_position: position,
             position,
-            moved: false,
         })
     }
 }
@@ -36,11 +34,8 @@ impl Piece for Rook {
         &self.position
     }
 
-    fn set_position(&mut self, new_position: &BoardPosition, moved: bool) {
+    fn set_position(&mut self, new_position: &BoardPosition) {
         self.position = *new_position;
-        if moved {
-            self.moved = true;
-        }
     }
 
     fn get_moves(&self, _include_captures: &bool) -> Vec<BoardPosition> {
