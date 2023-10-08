@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use bevy::app::App;
 use bevy::winit::WinitSettings;
 use bevy::DefaultPlugins;
