@@ -110,4 +110,28 @@ mod tests {
         // Confirm that the function returns the correct result
         assert_eq!(fen.active_color(), "b");
     }
+
+    #[test]
+    fn test_fen_castling_rights() {
+        // Randomly generated fen
+        let fen_string = "5Q2/4PK2/p1pP4/3p4/N1P1P2p/5bB1/3kp2P/8 b - - 0 1";
+
+        // Create a new fen from the above string
+        let fen = Fen::from_string(fen_string);
+
+        // Confirm that the function returns the correct result
+        assert_eq!(fen.castling_rights(), "-");
+    }
+
+    #[test]
+    fn test_fen_move_number() {
+        // Randomly generated fen
+        let fen_string = "5Q2/4PK2/p1pP4/3p4/N1P1P2p/5bB1/3kp2P/8 b - - 0 1";
+
+        // Create a new fen from the above string
+        let fen = Fen::from_string(fen_string);
+
+        // Confirm that the function returns the correct result
+        assert_eq!(*fen.move_number(), 1);
+    }
 }
