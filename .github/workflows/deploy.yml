@@ -27,19 +27,22 @@ jobs:
       - name: Build docs
         run: cargo doc --all-features --no-deps
 
+      - name: Build trunk
+        run: trunk build --release
+
       #  This adds the following:
       #   - A top level redirect to the bevy crate documentation
       #   - A robots.txt file to forbid any crawling of the site (to defer to the docs.rs site on search engines).
       #   - A .nojekyll file to disable Jekyll GitHub Pages builds.
-      - name: Finalize documentation
-        run: |
-          echo "<meta http-equiv=\"refresh\" content=\"0; url=chess_computer/index.html\">" > target/doc/index.html
-          echo "User-Agent: *\nDisallow: /" > target/doc/robots.txt
-          touch target/doc/.nojekyll
+      # - name: Finalize documentation
+      #   run: |
+      #     echo "<meta http-equiv=\"refresh\" content=\"0; url=chess_computer/index.html\">" > target/doc/index.html
+      #     echo "User-Agent: *\nDisallow: /" > target/doc/robots.txt
+      #     touch target/doc/.nojekyll
 
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: target/doc
+          folder: dist
           single-commit: true
