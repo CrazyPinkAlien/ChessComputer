@@ -60,9 +60,6 @@ jobs:
 
       - name: Install alsa and udev
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
-      
-      # - name: Install WASM tooling
-      #   run: cargo install wasm-bindgen-cli
 
       - name: Install Trunk
         run: cargo install trunk
@@ -75,6 +72,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 1a3f156267fbc72a02534b5a5cb1e2c1
-          projectName: chesscomputer
+          projectName: chess-computer
           directory: dist
           gitHubToken: ${{ secrets.CLOUDFLARE_GITHUB_TOKEN }}
