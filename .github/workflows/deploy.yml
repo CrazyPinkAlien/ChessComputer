@@ -65,7 +65,7 @@ jobs:
       #   run: cargo install wasm-bindgen-cli
 
       - name: Install Trunk
-        run: wget -qO- https://github.com/thedodd/trunk/releases/download/v0.17.5/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
+        run: cargo install trunk
 
       - name: Build WASM
         run: trunk build --release
