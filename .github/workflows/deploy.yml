@@ -73,7 +73,7 @@ jobs:
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_PAGES }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 1a3f156267fbc72a02534b5a5cb1e2c1
           projectName: chesscomputer
           directory: dist
