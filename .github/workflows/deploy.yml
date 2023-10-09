@@ -37,9 +37,41 @@ jobs:
           echo "User-Agent: *\nDisallow: /" > target/doc/robots.txt
           touch target/doc/.nojekyll
 
-
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: target/doc
           single-commit: true
+
+
+  build-and-deploy-wasm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: Install alsa and udev
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+      
+      # - name: Install WASM tooling
+      #   run: cargo install wasm-bindgen-cli
+
+      - name: Install Trunk
+        run: wget -qO- https://github.com/thedodd/trunk/releases/download/0.17.5/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES }}
+          accountId: 1a3f156267fbc72a02534b5a5cb1e2c1
+          projectName: chesscomputer
+          directory: dist
+          gitHubToken: ${{ secrets.CLOUDFLARE_GITHUB_TOKEN }}
