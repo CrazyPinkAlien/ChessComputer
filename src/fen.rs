@@ -1,5 +1,10 @@
 //! Contains the [Fen] struct which reads and stores a [Forsyth–Edwards Notation (FEN)](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation) string.
 
+use crate::chess_board::BoardPosition;
+
+/// The FEN which represents the default starting position.
+const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 /// Reads and stores a FEN string.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Fen {
@@ -9,12 +14,11 @@ pub struct Fen {
     active_color: String,
     /// The castling rights section of the FEN.
     castling_rights: String,
+    /// A square over which a pawn has just passed after moving two squares, if available.
+    ep_target_square: Option<BoardPosition>,
     /// The full move number.
     move_number: i32,
 }
-
-/// The FEN which represents the default starting position.
-const STARTING_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 impl Fen {
     /// Creates a new [Fen] from the given string.
@@ -27,11 +31,20 @@ impl Fen {
         let active_color = split_fen[1];
         // Get castling rights
         let castling_rights = split_fen[2];
+        // Get en passant target square
+        let ep_target_square = match split_fen[4] {
+            "-" => None,
+            _ => Some(BoardPosition::new(
+                Self::char_to_rank(split_fen[4].chars().nth(1).unwrap()),
+                Self::char_to_file(split_fen[4].chars().next().unwrap()),
+            )),
+        };
         // Create Fen object
         Fen {
             piece_placement: piece_placement.to_string(),
             active_color: active_color.to_string(),
             castling_rights: castling_rights.to_string(),
+            ep_target_square,
             move_number: split_fen[5].parse::<i32>().unwrap(),
         }
     }
@@ -51,9 +64,44 @@ impl Fen {
         &self.castling_rights
     }
 
+    /// Returns the en passant target square.
+    pub fn ep_target_square(&self) -> &Option<BoardPosition> {
+        &self.ep_target_square
+    }
+
     /// Returns the move number of the [Fen].
     pub fn move_number(&self) -> &i32 {
         &self.move_number
+    }
+
+    /// Converts the given rank char to the corresponding board index.
+    fn char_to_rank(char: char) -> usize {
+        match char {
+            '0' => 0,
+            '1' => 1,
+            '2' => 2,
+            '3' => 3,
+            '4' => 4,
+            '5' => 5,
+            '6' => 6,
+            '7' => 7,
+            _ => panic!("Unexpected rank char: {}.", char),
+        }
+    }
+
+    /// Converts the given file char to the corresponding board index.
+    fn char_to_file(char: char) -> usize {
+        match char {
+            'a' => 0,
+            'b' => 1,
+            'c' => 2,
+            'd' => 3,
+            'e' => 4,
+            'f' => 5,
+            'g' => 6,
+            'h' => 7,
+            _ => panic!("Unexpected file char: {}.", char),
+        }
     }
 }
 
