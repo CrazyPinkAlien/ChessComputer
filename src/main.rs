@@ -7,6 +7,7 @@ use bevy::DefaultPlugins;
 use crate::chess_board::ChessBoardPlugin;
 use crate::ui::UIPlugin;
 
+mod castling_rights;
 mod chess_board;
 mod fen;
 mod ui;

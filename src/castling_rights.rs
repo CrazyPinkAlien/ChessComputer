@@ -1,9 +1,9 @@
-use super::{r#move::Move, PieceColor, PieceType};
+use crate::chess_board::{r#move::Move, PieceColor, PieceType};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
 pub struct CastlingRights {
-    white: [bool; 2],
-    black: [bool; 2],
+    pub white: [bool; 2],
+    pub black: [bool; 2],
 }
 
 impl CastlingRights {

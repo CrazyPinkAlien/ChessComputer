@@ -5,16 +5,15 @@ use bevy::prelude::{
 };
 use strum_macros::EnumIter;
 
+use crate::castling_rights::CastlingRights;
 use crate::fen::Fen;
 
-use self::castling_rights::CastlingRights;
 use self::r#move::Move;
 
-mod castling_rights;
 pub(super) mod r#move;
 mod piece;
 
-const BOARD_SIZE: usize = 8;
+pub const BOARD_SIZE: usize = 8;
 
 pub(super) struct ChessBoardPlugin;
 
@@ -208,52 +207,27 @@ impl ChessBoard {
     fn from_fen(fen: &Fen, create_event: &mut EventWriter<PieceCreateEvent>) -> Self {
         // Create an empty board state
         let mut board_state = ChessBoard::empty_board();
+
         // Populate it from the given fen
-        let mut rank = 0;
-        let mut file = 0;
-        for rank_str in fen.piece_placement().split('/') {
-            for symbol in rank_str.chars().collect::<Vec<char>>() {
-                if symbol.is_digit(9) {
-                    file += symbol.to_digit(9).unwrap() as usize;
-                } else {
-                    let piece_color = if symbol.is_uppercase() {
-                        PieceColor::White
-                    } else {
-                        PieceColor::Black
-                    };
-                    let piece_type = match symbol.to_uppercase().next().unwrap() {
-                        'P' => PieceType::Pawn,
-                        'N' => PieceType::Knight,
-                        'B' => PieceType::Bishop,
-                        'R' => PieceType::Rook,
-                        'Q' => PieceType::Queen,
-                        'K' => PieceType::King,
-                        _ => panic!("Unrecognised symbol in FEN: {}", symbol),
-                    };
+        for rank in 0..BOARD_SIZE {
+            for file in 0..BOARD_SIZE {
+                if fen.piece_placement()[rank][file].is_some() {
                     board_state.add_piece(
-                        piece_color,
-                        piece_type,
+                        fen.piece_placement()[rank][file].unwrap().0,
+                        fen.piece_placement()[rank][file].unwrap().1,
                         BoardPosition::new(rank, file),
                         create_event,
                     );
-                    file += 1;
                 }
-                if file >= 8 {
-                    rank += 1;
-                    file = 0;
-                };
             }
         }
+
         // Set active color
-        board_state.active_color = match fen.active_color().as_str() {
-            "w" => Some(PieceColor::White),
-            "b" => Some(PieceColor::Black),
-            _ => panic!("Unrecognised active color in FEN: {}", fen.active_color()),
-        };
+        board_state.active_color = Some(*fen.active_color());
         // Set move number
-        board_state.move_number = *fen.move_number();
+        board_state.move_number = *fen.fullmove_number();
         // Set castling rights
-        board_state.castling_rights = CastlingRights::from_fen_string(fen.castling_rights());
+        board_state.castling_rights = *fen.castling_rights();
 
         board_state
     }
