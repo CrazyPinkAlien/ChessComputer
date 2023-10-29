@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"chess_computer":[["impl IntoEnumIterator for <a class=\"enum\" href=\"chess_computer/chess_board/enum.PieceColor.html\" title=\"enum chess_computer::chess_board::PieceColor\">PieceColor</a>"],["impl IntoEnumIterator for <a class=\"enum\" href=\"chess_computer/chess_board/enum.GameEndStatus.html\" title=\"enum chess_computer::chess_board::GameEndStatus\">GameEndStatus</a>"],["impl IntoEnumIterator for <a class=\"enum\" href=\"chess_computer/chess_board/enum.PieceType.html\" title=\"enum chess_computer::chess_board::PieceType\">PieceType</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

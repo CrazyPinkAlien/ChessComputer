@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["highlight_valid_squares","setup"],"mod":["square"],"struct":["BoardProperties"]};

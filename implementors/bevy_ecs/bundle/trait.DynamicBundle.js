@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"chess_computer":[["impl DynamicBundle for <a class=\"struct\" href=\"chess_computer/ui/piece/struct.PieceBundle.html\" title=\"struct chess_computer::ui::piece::PieceBundle\">PieceBundle</a>"],["impl DynamicBundle for <a class=\"struct\" href=\"chess_computer/ui/board/square/struct.SquareBundle.html\" title=\"struct chess_computer::ui::board::square::SquareBundle\">SquareBundle</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

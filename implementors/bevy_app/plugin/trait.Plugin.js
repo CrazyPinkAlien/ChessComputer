@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"chess_computer":[["impl Plugin for <a class=\"struct\" href=\"chess_computer/chess_board/struct.ChessBoardPlugin.html\" title=\"struct chess_computer::chess_board::ChessBoardPlugin\">ChessBoardPlugin</a>"],["impl Plugin for <a class=\"struct\" href=\"chess_computer/ui/struct.UIPlugin.html\" title=\"struct chess_computer::ui::UIPlugin\">UIPlugin</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

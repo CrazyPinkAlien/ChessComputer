@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["mouse_event_handler","setup","ui_system"],"mod":["board","piece"],"struct":["BoardClickEvent","MainCamera","UIPlugin"]};

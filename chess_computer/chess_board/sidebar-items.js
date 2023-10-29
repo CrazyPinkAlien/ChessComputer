@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BOARD_SIZE"],"enum":["GameEndStatus","PieceColor","PieceType"],"fn":["game_end_checker","make_move","reset_board_state","setup"],"mod":["move","piece"],"struct":["BoardPosition","ChessBoard","ChessBoardPlugin","GameEndStatusIter","PieceColorIter","PieceCreateEvent","PieceMoveEvent","PieceTypeIter","RequestMoveEvent","ResetBoardEvent"]};

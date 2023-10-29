@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["STARTING_FEN"],"struct":["Fen"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["new_piece"],"mod":["bishop","king","knight","pawn","queen","rook"],"trait":["Piece"]};
